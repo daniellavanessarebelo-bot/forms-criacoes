@@ -303,10 +303,66 @@ function renderProducts(){document.getElementById('productsTable').innerHTML=db.
 function openProduct(p=null){p=p||{id:id('p')};document.getElementById('modalTitle').textContent=p.name?'Editar produto':'Novo produto';document.getElementById('modalBody').innerHTML=`<div class="form-grid"><div class="field"><label>Produto</label><input id="p_name" value="${p.name||''}"></div><div class="field"><label>Unidade</label><input id="p_unit" value="${p.unit||'un.'}"></div><div class="field"><label>Preço padrão (R$)</label><input id="p_price" type="number" step=".01" value="${p.price||0}"></div><div class="field"><label>Custo padrão (R$)</label><input id="p_cost" type="number" step=".01" value="${p.cost||0}"></div><div class="field"><label>Prazo padrão</label><input id="p_time" value="${p.time||''}" placeholder="Ex.: 3 dias úteis"></div></div><div class="actions"><button class="btn btn-light" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveProduct('${p.id}')">Salvar produto</button></div>`;document.getElementById('modal').classList.add('open')}
 function saveProduct(i){let p=db.products.find(x=>x.id===i)||{id:i};Object.assign(p,{name:v('p_name'),unit:v('p_unit'),price:+v('p_price'),cost:+v('p_cost'),time:v('p_time')});if(!db.products.includes(p))db.products.push(p);save();closeModal();toast('Produto salvo!');renderAll()}
 
-function renderQuotes(){document.getElementById('quotesTable').innerHTML=db.quotes.length?`<table><thead><tr><th>Nº</th><th>Cliente</th><th>Produto</th><th>Data</th><th>Total</th><th>Status</th><th></th></tr></thead><tbody>${db.quotes.map(q=>`<tr><td>${q.number}</td><td>${q.customer}</td><td>${q.product}</td><td>${dateBR(q.date)}</td><td>${money(q.total)}</td><td>${q.status}</td><td><button class="btn btn-light" onclick="convertQuote('${q.id}')">Virar pedido</button></td></tr>`).join('')}</tbody></table>`:'<div class="empty">Nenhum orçamento cadastrado.</div>'}
-function openQuote(){let q={id:id('q'),number:'ORC-'+String(db.quotes.length+1).padStart(4,'0'),date:today(),status:'Enviado'};document.getElementById('modalTitle').textContent='Novo orçamento';document.getElementById('modalBody').innerHTML=`<div class="form-grid"><div class="field"><label>Número</label><input id="q_number" value="${q.number}"></div><div class="field"><label>Data</label><input id="q_date" type="date" value="${q.date}"></div><div class="field"><label>Cliente</label><input id="q_customer" list="qcustomers"><datalist id="qcustomers">${db.customers.map(c=>`<option value="${c.name}">`).join('')}</datalist></div><div class="field"><label>Produto/serviço</label><input id="q_product"></div><div class="field"><label>Quantidade</label><input id="q_qty" type="number" value="1"></div><div class="field"><label>Valor unitário (R$)</label><input id="q_unit" type="number" step=".01" value="0"></div><div class="field"><label>Desconto (R$)</label><input id="q_discount" type="number" step=".01" value="0"></div><div class="field"><label>Status</label><select id="q_status"><option>Rascunho</option><option selected>Enviado</option><option>Aguardando resposta</option><option>Aprovado</option><option>Recusado</option></select></div><div class="field full"><label>Observações</label><textarea id="q_notes"></textarea></div></div><div class="actions"><button class="btn btn-light" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveQuote('${q.id}')">Salvar orçamento</button></div>`;document.getElementById('modal').classList.add('open')}
-function saveQuote(i){let q={id:i,number:v('q_number'),date:v('q_date'),customer:v('q_customer'),product:v('q_product'),qty:+v('q_qty'),unit:+v('q_unit'),discount:+v('q_discount'),total:Math.max(0,+v('q_qty')*+v('q_unit')-+v('q_discount')),status:v('q_status'),notes:v('q_notes')};db.quotes.push(q);save();closeModal();toast('Orçamento salvo!');renderAll()}
-function convertQuote(i){let q=db.quotes.find(x=>x.id===i);if(!q)return;openOrder({id:id('o'),number:'PED-'+String(db.orders.length+1).padStart(4,'0'),date:today(),due:today(),status:'Em andamento',customer:q.customer,product:q.product,qty:q.qty,total:q.total,received:0,cost:0});}
+function quoteItems(q){
+ if(Array.isArray(q.items)&&q.items.length)return q.items;
+ return q.product?[{product:q.product,qty:Number(q.qty||1),unit:Number(q.unit||0)}]:[];
+}
+function quoteSubtotal(q){return quoteItems(q).reduce((a,x)=>a+Number(x.qty||0)*Number(x.unit||0),0)}
+function renderQuotes(){
+ document.getElementById('quotesTable').innerHTML=db.quotes.length?`<table><thead><tr><th>Nº</th><th>Cliente</th><th>Produtos</th><th>Data</th><th>Total</th><th>Status</th><th></th></tr></thead><tbody>${db.quotes.map(q=>{let items=quoteItems(q);return `<tr><td>${q.number}</td><td>${q.customer}</td><td>${items.map(x=>`${x.qty}x ${x.product}`).join('<br>')}</td><td>${dateBR(q.date)}</td><td>${money(q.total)}</td><td>${q.status}</td><td><button class="btn btn-light" onclick="convertQuote('${q.id}')">Virar pedido</button></td></tr>`}).join('')}</tbody></table>`:'<div class="empty">Nenhum orçamento cadastrado.</div>'
+}
+let quoteDraftItems=[];
+function quoteItemRow(x={product:'',qty:1,unit:0}){
+ const idx=quoteDraftItems.length;
+ quoteDraftItems.push({product:x.product||'',qty:Number(x.qty||1),unit:Number(x.unit||0)});
+ return idx;
+}
+function renderQuoteItems(){
+ const box=document.getElementById('q_items'); if(!box)return;
+ box.innerHTML=quoteDraftItems.map((x,i)=>`<div style="display:grid;grid-template-columns:minmax(180px,2fr) 90px 130px 120px 42px;gap:8px;align-items:end;margin-bottom:9px">
+ <div class="field"><label>Produto/serviço</label><input data-qi="${i}" data-f="product" value="${String(x.product).replace(/"/g,'&quot;')}" list="qproducts" oninput="updateQuoteItem(this)"></div>
+ <div class="field"><label>Qtd.</label><input data-qi="${i}" data-f="qty" type="number" min="0" step="1" value="${x.qty}" oninput="updateQuoteItem(this)"></div>
+ <div class="field"><label>Valor unit. (R$)</label><input data-qi="${i}" data-f="unit" type="number" min="0" step=".01" value="${x.unit}" oninput="updateQuoteItem(this)"></div>
+ <div class="field"><label>Subtotal</label><input value="${money(Number(x.qty||0)*Number(x.unit||0))}" disabled></div>
+ <button class="btn btn-light" type="button" title="Remover item" onclick="removeQuoteItem(${i})">×</button></div>`).join('');
+ updateQuoteTotal();
+}
+function updateQuoteItem(el){
+ let i=Number(el.dataset.qi),f=el.dataset.f;
+ quoteDraftItems[i][f]=f==='product'?el.value:Number(el.value||0);
+ renderQuoteItems();
+}
+function addQuoteItem(){quoteItemRow();renderQuoteItems()}
+function removeQuoteItem(i){if(quoteDraftItems.length===1)return toast('O orçamento precisa ter pelo menos um produto.');quoteDraftItems.splice(i,1);renderQuoteItems()}
+function updateQuoteTotal(){
+ const sub=quoteDraftItems.reduce((a,x)=>a+Number(x.qty||0)*Number(x.unit||0),0);
+ const dis=Number((document.getElementById('q_discount')||{}).value||0);
+ const el=document.getElementById('q_total_preview'); if(el)el.textContent=money(Math.max(0,sub-dis));
+}
+function openQuote(){
+ let q={id:id('q'),number:'ORC-'+String(db.quotes.length+1).padStart(4,'0'),date:today(),status:'Enviado'};
+ quoteDraftItems=[];quoteItemRow();
+ document.getElementById('modalTitle').textContent='Novo orçamento';
+ document.getElementById('modalBody').innerHTML=`<div class="form-grid"><div class="field"><label>Número</label><input id="q_number" value="${q.number}"></div><div class="field"><label>Data</label><input id="q_date" type="date" value="${q.date}"></div><div class="field"><label>Cliente</label><input id="q_customer" list="qcustomers"><datalist id="qcustomers">${db.customers.map(c=>`<option value="${c.name}">`).join('')}</datalist></div><div class="field"><label>Status</label><select id="q_status"><option>Rascunho</option><option selected>Enviado</option><option>Aguardando resposta</option><option>Aprovado</option><option>Recusado</option></select></div></div>
+ <datalist id="qproducts">${db.products.map(p=>`<option value="${p.name}">`).join('')}</datalist>
+ <div style="margin-top:16px"><div class="panel-head"><h3 style="margin:0">Produtos do orçamento</h3><button class="btn btn-light" type="button" onclick="addQuoteItem()">+ Adicionar produto</button></div><div id="q_items"></div></div>
+ <div class="form-grid" style="margin-top:12px"><div class="field"><label>Desconto (R$)</label><input id="q_discount" type="number" step=".01" value="0" oninput="updateQuoteTotal()"></div><div class="field"><label>Total do orçamento</label><div id="q_total_preview" style="font-size:22px;font-weight:800;color:#10264b;padding:10px 0">R$ 0,00</div></div><div class="field full"><label>Observações</label><textarea id="q_notes"></textarea></div></div>
+ <div class="actions"><button class="btn btn-light" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveQuote('${q.id}')">Salvar orçamento</button></div>`;
+ document.getElementById('modal').classList.add('open');renderQuoteItems()
+}
+function saveQuote(i){
+ let items=quoteDraftItems.filter(x=>String(x.product||'').trim()).map(x=>({product:String(x.product).trim(),qty:Number(x.qty||0),unit:Number(x.unit||0)}));
+ if(!v('q_customer'))return toast('Informe o cliente.');
+ if(!items.length)return toast('Adicione pelo menos um produto.');
+ let discount=Number(v('q_discount')||0),subtotal=items.reduce((a,x)=>a+x.qty*x.unit,0);
+ let q={id:i,number:v('q_number'),date:v('q_date'),customer:v('q_customer'),items,discount,total:Math.max(0,subtotal-discount),status:v('q_status'),notes:v('q_notes')};
+ db.quotes.push(q);save();closeModal();toast('Orçamento salvo!');renderAll()
+}
+function convertQuote(i){
+ let q=db.quotes.find(x=>x.id===i);if(!q)return;
+ let items=quoteItems(q);
+ openOrder({id:id('o'),number:'PED-'+String(db.orders.length+1).padStart(4,'0'),date:today(),due:today(),status:'Em andamento',customer:q.customer,product:items.map(x=>`${x.qty}x ${x.product}`).join(' | '),qty:items.reduce((a,x)=>a+Number(x.qty||0),0),total:q.total,received:0,cost:0});
+}
 
 function renderFinance(){let m=currentMonth(), os=monthOrders(m), rec=os.reduce((a,o)=>a+Number(o.received||0),0), receivable=os.reduce((a,o)=>a+orderBalance(o),0), expenses=db.finance.filter(x=>x.type==='Saída'&&(x.date||'').slice(0,7)===m).reduce((a,x)=>a+Number(x.value||0),0);document.getElementById('financeCards').innerHTML=[['Recebido',money(rec)],['A receber',money(receivable)],['Despesas lançadas',money(expenses)],['Saldo',money(rec-expenses)]].map(x=>`<div class="card"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');document.getElementById('financeTable').innerHTML=`<table><thead><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th>Forma</th><th>Valor</th></tr></thead><tbody>${db.finance.sort((a,b)=>b.date.localeCompare(a.date)).map(x=>`<tr><td>${dateBR(x.date)}</td><td>${x.desc}</td><td>${x.type}</td><td>${x.payment}</td><td>${money(x.value)}</td></tr>`).join('')}</tbody></table>`}
 function openFinance(){let x={id:id('f'),date:today(),type:'Entrada',payment:'Pix'};document.getElementById('modalTitle').textContent='Novo lançamento';document.getElementById('modalBody').innerHTML=`<div class="form-grid"><div class="field"><label>Data</label><input id="fi_date" type="date" value="${x.date}"></div><div class="field"><label>Tipo</label><select id="fi_type"><option>Entrada</option><option>Saída</option></select></div><div class="field"><label>Descrição</label><input id="fi_desc"></div><div class="field"><label>Forma de pagamento</label><select id="fi_payment"><option>Pix</option><option>Dinheiro</option><option>Cartão</option><option>Transferência</option><option>Outro</option></select></div><div class="field"><label>Valor (R$)</label><input id="fi_value" type="number" step=".01"></div></div><div class="actions"><button class="btn btn-light" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveFinance('${x.id}')">Salvar lançamento</button></div>`;document.getElementById('modal').classList.add('open')}
