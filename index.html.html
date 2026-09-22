@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Forms Criações Personalizados — Gestão</title>
+<style>
+:root{
+  --brown:#087F83; --brown2:#11A6A0; --cream:#FFF8F1; --ink:#29343A;
+  --muted:#718087; --line:#E9E3DD; --white:#fff;
+  --green:#2E9B68; --red:#E45662; --gold:#F29A3F; --blue:#178EAA; --pink:#D94F87; --teal:#087F83;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:radial-gradient(circle at 92% 4%,rgba(217,79,135,.10),transparent 18%),radial-gradient(circle at 72% 0%,rgba(242,154,63,.12),transparent 20%),#fbf8f4;color:var(--ink)}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer}
+.app{display:flex;min-height:100vh}
+.sidebar{width:245px;background:#fff;border-right:1px solid var(--line);padding:24px 16px;position:fixed;inset:0 auto 0 0;z-index:5}
+.brand{display:flex;gap:11px;align-items:center;padding:6px 8px 24px}
+.brand-mark{width:42px;height:42px;border-radius:12px;background:conic-gradient(from 30deg,#087F83,#178EAA,#D94F87,#F29A3F,#087F83);color:white;display:grid;place-items:center;font-weight:900;font-size:19px;box-shadow:0 6px 16px rgba(8,127,131,.20)}
+.brand strong{display:block;font-size:16px}.brand span{font-size:11px;color:var(--muted)}
+.nav button{width:100%;border:0;background:transparent;text-align:left;padding:12px 13px;border-radius:10px;color:#554b45;margin:2px 0}
+.nav button.active,.nav button:hover{background:linear-gradient(90deg,rgba(8,127,131,.12),rgba(217,79,135,.06));color:var(--teal);font-weight:800}
+.content{margin-left:245px;width:calc(100% - 245px);padding:30px;max-width:1500px}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:25px}
+h1{font-size:27px;margin:0 0 5px}.subtitle{color:var(--muted);font-size:14px}
+.btn{border:0;border-radius:9px;padding:10px 15px;font-weight:700}
+.btn-primary{background:linear-gradient(135deg,var(--teal),#0c9d9c);color:white}.btn-light{background:white;border:1px solid var(--line);color:var(--ink)}
+.cards{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:22px}
+.card{background:white;border:1px solid var(--line);border-radius:14px;padding:18px;box-shadow:0 3px 15px rgba(60,40,25,.035)}
+.card .label{font-size:12px;color:var(--muted);margin-bottom:9px}.card .value{font-size:22px;font-weight:800}.card small{color:var(--muted)}
+.grid2{display:grid;grid-template-columns:1.35fr .9fr;gap:18px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.panel{background:white;border:1px solid var(--line);border-radius:14px;padding:20px;margin-bottom:18px}
+.panel-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}.panel h2{font-size:17px;margin:0}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:12px 9px;border-bottom:1px solid #eee}th{font-size:11px;color:var(--muted);text-transform:uppercase}
+.status{display:inline-flex;align-items:center;border-radius:20px;padding:6px 10px;font-size:11px;font-weight:900;box-shadow:0 2px 8px rgba(0,0,0,.04)}
+.s-andamento{background:#FFF2D9;color:#B76C00;border:1px solid #F7D18A}.s-atrasado{background:#FFE7EA;color:#C93648;border:1px solid #F6B7C0}
+.s-prazo{background:#E2F7EE;color:#177A51;border:1px solid #AEE2CD}.s-concluido{background:#E2F4F7;color:#087F83;border:1px solid #A7DDE0}
+.toolbar{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:15px}.toolbar input,.toolbar select{min-width:170px}
+input,select,textarea{width:100%;border:1px solid #ddd3cd;border-radius:8px;padding:10px;background:white;color:var(--ink)}
+textarea{min-height:80px;resize:vertical}.field{margin-bottom:13px}.field label{font-size:12px;font-weight:700;display:block;margin-bottom:6px}
+.form-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.form-grid.three{grid-template-columns:repeat(3,1fr)}
+.full{grid-column:1/-1}.actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
+.modal{display:none;position:fixed;inset:0;background:rgba(40,28,22,.45);z-index:20;padding:35px;overflow:auto}.modal.open{display:block}
+.modal-box{background:white;max-width:760px;margin:auto;border-radius:16px;padding:23px;box-shadow:0 20px 60px rgba(0,0,0,.18)}
+.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}.close{border:0;background:#f3efec;border-radius:50%;width:34px;height:34px}
+.kpi-row{display:flex;gap:9px;flex-wrap:wrap}.mini{background:#faf8f6;border-radius:10px;padding:11px 13px}.mini b{display:block;font-size:18px}.mini span{font-size:11px;color:var(--muted)}
+.empty{text-align:center;padding:35px;color:var(--muted)}
+.progress{height:8px;background:#eee6e0;border-radius:20px;overflow:hidden}.progress i{display:block;height:100%;background:linear-gradient(90deg,#087F83,#178EAA,#D94F87,#F29A3F)}
+.toast{position:fixed;right:25px;bottom:25px;background:#302923;color:white;padding:12px 17px;border-radius:10px;display:none;z-index:50}
+@media(max-width:1000px){.cards{grid-template-columns:repeat(2,1fr)}.grid2,.grid3{grid-template-columns:1fr}.sidebar{width:205px}.content{margin-left:205px;width:calc(100% - 205px)}}
+@media(max-width:700px){.sidebar{position:static;width:100%;height:auto}.app{display:block}.content{margin:0;width:100%;padding:18px}.nav{display:grid;grid-template-columns:repeat(3,1fr);gap:3px}.nav button{font-size:11px}.cards{grid-template-columns:1fr 1fr}.form-grid,.form-grid.three{grid-template-columns:1fr}.table-wrap{overflow:auto}}
+
+/* Interface Forms — versão premium */
+:root{
+ --navy:#10264b; --pink:#e83269; --orange:#ff9f24; --sky:#2da9ee;
+ --mint:#27b878; --soft:#fff9f7; --panel:#ffffff; --shadow:0 10px 28px rgba(25,39,69,.07);
+}
+body{background:linear-gradient(135deg,#fff 0%,#fff9f7 58%,#f8fffe 100%);color:var(--navy)}
+.sidebar{width:255px;background:linear-gradient(180deg,#fff 0%,#fff8f6 100%);border-right:1px solid #f1e9e6;padding:18px 16px;box-shadow:none}
+.content{margin-left:255px;width:calc(100% - 255px);padding:28px 30px 45px}
+.brand-full{justify-content:center;padding:0 8px 18px}
+.brand-logo{width:172px;height:172px;object-fit:contain;mix-blend-mode:multiply}
+.nav button{font-size:14px;color:#18345d;padding:13px 16px;margin:4px 0;border-radius:10px;transition:.2s}
+.nav button.active{background:linear-gradient(100deg,#df2f69,#ff9b25);color:#fff;font-weight:800;box-shadow:0 8px 18px rgba(225,48,105,.18)}
+.nav button:hover:not(.active){background:#fff0f4;color:#df2f69}
+.top{padding:4px 4px 10px}.top h1{font-size:30px;color:#10264b;letter-spacing:-.6px}.subtitle{font-size:15px;color:#61708c}
+.btn{border-radius:10px}.btn-primary{background:linear-gradient(100deg,#df2f69,#ee3c74);box-shadow:0 7px 16px rgba(223,47,105,.20)}
+.cards{gap:15px}
+.card{border:1px solid #edf0f4;border-radius:15px;box-shadow:var(--shadow);padding:19px;background:#fff}
+.card:before{width:0}
+.card .label{color:#52627c}.card .value{color:#10264b;font-size:23px}
+.panel{border:1px solid #edf0f4;border-radius:15px;box-shadow:var(--shadow);padding:18px}
+.panel h2{color:#10264b;font-size:18px}
+table{color:#263d61}th{background:#f7f9fb;color:#63718a;font-size:10px}th:first-child{border-radius:9px 0 0 9px}th:last-child{border-radius:0 9px 9px 0}
+td{border-bottom:1px solid #eef1f5}
+.status{padding:6px 11px;font-size:11px;font-weight:800;border-radius:999px}
+.s-andamento{background:#fff0d7;color:#a65a00;border:1px solid #ffd493}
+.s-atrasado{background:#ffe2e9;color:#c92355;border:1px solid #ffc3d1}
+.s-prazo{background:#dcf6e9;color:#087849;border:1px solid #b7e9d1}
+.s-concluido{background:#dceeff;color:#075ea8;border:1px solid #b9ddfa}
+input,select,textarea{border-color:#e1e6ec;color:#203758;background:#fff}
+input:focus,select:focus,textarea:focus{outline:2px solid rgba(232,50,105,.12);border-color:#e83269}
+.modal{background:rgba(16,38,75,.35)}.modal-box{border-radius:18px}
+.progress{background:#eef2f4}.progress i{background:linear-gradient(90deg,#20a9e8,#2fbd82,#ffad2d,#e83269)}
+.toast{background:#10264b}
+.dashboard-status{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px}
+.status-card{border-radius:15px;padding:18px;display:flex;align-items:center;gap:13px;box-shadow:var(--shadow);border:1px solid rgba(0,0,0,.03)}
+.status-card .ico{width:43px;height:43px;border-radius:50%;display:grid;place-items:center;font-size:21px;background:rgba(255,255,255,.68)}
+.status-card b{display:block;font-size:25px;line-height:1;color:#10264b}.status-card span{font-size:12px;color:#324664}
+.sc-prazo{background:linear-gradient(135deg,#dff3ff,#eef9ff)}.sc-andamento{background:linear-gradient(135deg,#fff0d8,#fff8ed)}
+.sc-atrasado{background:linear-gradient(135deg,#ffe2e9,#fff0f4)}.sc-concluido{background:linear-gradient(135deg,#dcf7e9,#edfff6)}
+.quick-actions{display:grid;gap:9px;margin-top:13px}.quick-actions button{width:100%;text-align:left;padding:13px 15px;background:#fff;border:1px solid #e8eaf0;border-radius:10px;color:#19345d;font-weight:700}
+.quick-actions button:first-child{background:linear-gradient(100deg,#df2f69,#ed3a72);color:#fff;border:0;text-align:center}
+.slogan{font-family:cursive;color:#df2f69;font-size:22px;text-align:center;transform:rotate(-2deg);padding:10px 8px 2px}
+@media(max-width:1000px){.dashboard-status{grid-template-columns:1fr 1fr}}
+@media(max-width:700px){.brand-logo{width:130px;height:130px}.dashboard-status{grid-template-columns:1fr 1fr}.content{padding:18px}}
+
+
+/* Forms — layout fiel à referência aprovada */
+.content{max-width:none;padding:25px 28px 38px;background:
+radial-gradient(circle at 86% -5%,rgba(42,184,177,.10),transparent 18%),
+radial-gradient(circle at 62% 8%,rgba(255,160,45,.07),transparent 18%),
+linear-gradient(180deg,#fffdfc,#fffafa)}
+.sidebar{width:255px;padding:12px 16px 20px}
+.brand-logo{width:190px;height:205px;margin:-10px auto -4px}
+.nav button{height:50px;display:flex;align-items:center}
+.top{margin-bottom:17px;align-items:flex-start}
+.top:before{content:"BEM-VINDA,";position:absolute;font-size:11px;font-weight:900;letter-spacing:2px;color:#41516c;margin-top:-4px}
+.top>div{padding-top:15px}
+.top h1{font-size:31px;line-height:1.05;margin-bottom:7px}
+.dashboard-status{grid-template-columns:repeat(4,minmax(180px,1fr));gap:15px}
+.status-card{min-height:92px;padding:16px;border:0}
+.status-card .ico{width:48px;height:48px;font-size:23px}
+.status-card b{font-size:27px}.status-card span{font-size:12px}
+.cards{grid-template-columns:repeat(4,1fr)!important;gap:14px}
+#dashCards .card:nth-child(5){display:none}
+#dashCards .card{min-height:108px;padding:18px 17px}
+#dashCards .card .label{font-size:12px}
+#dashCards .card .value{font-size:22px;margin-top:5px}
+.grid2{grid-template-columns:minmax(0,3fr) minmax(250px,.72fr);gap:17px}
+#dashboard .panel{margin-bottom:15px}
+#dashboard .grid2>.panel:first-child{min-height:360px}
+#dashboard .grid2>.panel:last-child{min-height:360px}
+.quick-actions{margin-top:16px}
+.quick-actions button{height:49px;font-size:13px}
+.slogan{font-size:24px;line-height:1.1;margin:3px 0 10px}
+table{font-size:12px}th,td{padding:11px 8px}
+.panel-head h2{font-size:19px}
+.forms-footer{margin-top:16px;padding:17px 12px 0;border-top:1px solid #eee7e5;display:flex;justify-content:space-between;color:#52627c;font-size:12px}
+.forms-footer b{color:#10264b}
+@media(max-width:1200px){.dashboard-status{grid-template-columns:repeat(2,1fr)}.cards{grid-template-columns:repeat(2,1fr)!important}.grid2{grid-template-columns:1fr}}
+
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="sidebar">
+  <div class="brand brand-full"><img class="brand-logo" src="logo.png" alt="Forms Criações Personalizadas"></div>
+  <nav class="nav" id="nav">
+    <button data-page="dashboard" class="active">▦ &nbsp; Dashboard</button>
+    <button data-page="pedidos">▤ &nbsp; Pedidos</button>
+    <button data-page="orcamentos">▧ &nbsp; Orçamentos</button>
+    <button data-page="clientes">♙ &nbsp; Clientes</button>
+    <button data-page="produtos">◇ &nbsp; Produtos</button>
+    <button data-page="financeiro">R$ &nbsp; Financeiro</button>
+    <button data-page="relatorios">▥ &nbsp; Relatórios</button>
+  </nav>
+  <div style="position:absolute;bottom:18px;left:16px;right:16px">
+    <button class="btn btn-light" style="width:100%" onclick="exportData()">Backup dos dados</button>
+    <label class="btn btn-light" style="width:100%;display:block;text-align:center;margin-top:7px">Restaurar backup<input type="file" accept=".json" onchange="importData(event)" style="display:none"></label>
+  </div>
+</aside>
+
+<main class="content">
+<section id="dashboard" class="page">
+  <div class="top"><div><h1>Aqui suas ideias ganham forma!</h1><div class="subtitle">Organize, acompanhe e faça sua gráfica crescer.</div></div><button class="btn btn-primary" onclick="openOrder()">+ Novo pedido</button></div>
+  <div class="dashboard-status" id="dashboardStatus"></div>
+  <div class="cards" id="dashCards"></div>
+  <div class="grid2">
+    <div class="panel"><div class="panel-head"><h2>Pedidos recentes</h2><button class="btn btn-light" onclick="go('pedidos')">Ver todos</button></div><div id="recentOrders"></div></div>
+    <div class="panel"><div class="panel-head"><h2>Resumo do mês</h2></div><div id="monthSummary"></div></div>
+  </div>
+</section>
+
+<section id="pedidos" class="page" style="display:none">
+  <div class="top"><div><h1>Pedidos</h1><div class="subtitle">Acompanhe prazos, valores e recebimentos.</div></div><button class="btn btn-primary" onclick="openOrder()">+ Novo pedido</button></div>
+  <div class="panel"><div class="toolbar"><input id="orderSearch" placeholder="Buscar cliente, produto ou nº..." oninput="renderOrders()"><select id="orderStatus" onchange="renderOrders()"><option value="">Todos os status</option><option>Em andamento</option><option>Atrasado</option><option>No prazo</option><option>Concluído</option></select></div><div class="table-wrap" id="ordersTable"></div></div>
+</section>
+
+<section id="orcamentos" class="page" style="display:none">
+  <div class="top"><div><h1>Orçamentos</h1><div class="subtitle">Crie propostas e transforme as aprovadas em pedidos.</div></div><button class="btn btn-primary" onclick="openQuote()">+ Novo orçamento</button></div>
+  <div class="panel"><div id="quotesTable"></div></div>
+</section>
+
+<section id="clientes" class="page" style="display:none">
+  <div class="top"><div><h1>Clientes</h1><div class="subtitle">Cadastro e histórico de clientes.</div></div><button class="btn btn-primary" onclick="openCustomer()">+ Novo cliente</button></div>
+  <div class="panel"><div class="toolbar"><input id="customerSearch" placeholder="Buscar cliente..." oninput="renderCustomers()"></div><div id="customersTable"></div></div>
+</section>
+
+<section id="produtos" class="page" style="display:none">
+  <div class="top"><div><h1>Produtos</h1><div class="subtitle">Catálogo com preço e custo padrão.</div></div><button class="btn btn-primary" onclick="openProduct()">+ Novo produto</button></div>
+  <div class="panel"><div id="productsTable"></div></div>
+</section>
+
+<section id="financeiro" class="page" style="display:none">
+  <div class="top"><div><h1>Financeiro</h1><div class="subtitle">Entradas, custos e valores a receber.</div></div><button class="btn btn-primary" onclick="openFinance()">+ Lançamento</button></div>
+  <div class="cards" id="financeCards"></div>
+  <div class="panel"><div id="financeTable"></div></div>
+</section>
+
+<section id="relatorios" class="page" style="display:none">
+  <div class="top"><div><h1>Relatórios</h1><div class="subtitle">Resumo mensal da operação.</div></div><input id="reportMonth" type="month" style="width:180px" onchange="renderReports()"></div>
+  <div class="grid3" id="reportCards"></div>
+  <div class="panel"><div class="panel-head"><h2>Pedidos do período</h2></div><div id="reportOrders"></div></div>
+</section>
+<div class="forms-footer"><span><b>Forms Criações Personalizadas</b> &nbsp; | &nbsp; Mais que personalizados, realizamos histórias!</span><span>v1.0 ♥</span></div>
+</main>
+</div>
+
+<!-- Modal -->
+<div class="modal" id="modal"><div class="modal-box"><div class="modal-head"><h2 id="modalTitle">Novo</h2><button class="close" onclick="closeModal()">×</button></div><div id="modalBody"></div></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const KEY='forms_criacoes_gestao_v1';
+let db=JSON.parse(localStorage.getItem(KEY)||'null')||{orders:[],quotes:[],customers:[],products:[],finance:[]};
+function save(){localStorage.setItem(KEY,JSON.stringify(db));}
+function money(v){return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}
+function dateBR(s){if(!s)return '-';let d=new Date(s+'T12:00:00');return d.toLocaleDateString('pt-BR')}
+function today(){return new Date().toISOString().slice(0,10)}
+function id(prefix){return prefix+Date.now().toString().slice(-7)}
+function toast(t){let x=document.getElementById('toast');x.textContent=t;x.style.display='block';setTimeout(()=>x.style.display='none',2200)}
+function go(page){document.querySelectorAll('.page').forEach(x=>x.style.display='none');document.getElementById(page).style.display='block';document.querySelectorAll('.nav button').forEach(x=>x.classList.toggle('active',x.dataset.page===page));renderAll()}
+document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>go(b.dataset.page));
+
+function computedStatus(o){
+  if(o.status==='Concluído') return 'Concluído';
+  if(o.due && o.due<today()) return 'Atrasado';
+  if(o.status==='Atrasado') return 'Atrasado';
+  if(o.status==='No prazo') return 'No prazo';
+  return 'Em andamento';
+}
+function statusHTML(s){let c=s==='Atrasado'?'s-atrasado':s==='Concluído'?'s-concluido':s==='No prazo'?'s-prazo':'s-andamento';return `<span class="status ${c}">${s}</span>`}
+function orderBalance(o){return Math.max(0,Number(o.total||0)-Number(o.received||0))}
+function monthOrders(m){return db.orders.filter(o=>(o.date||'').slice(0,7)===m)}
+function currentMonth(){return new Date().toISOString().slice(0,7)}
+
+function renderDashboard(){
+ const allStatuses=db.orders.map(o=>computedStatus(o));
+ const counts={
+  prazo:allStatuses.filter(x=>x==='No prazo').length,
+  andamento:allStatuses.filter(x=>x==='Em andamento').length,
+  atrasado:allStatuses.filter(x=>x==='Atrasado').length,
+  concluido:allStatuses.filter(x=>x==='Concluído').length
+ };
+ const statusBox=document.getElementById('dashboardStatus');
+ if(statusBox) statusBox.innerHTML=`
+  <div class="status-card sc-prazo"><div class="ico">◇</div><div><b>${counts.prazo}</b><span>Pedidos no prazo</span></div></div>
+  <div class="status-card sc-andamento"><div class="ico">⚙</div><div><b>${counts.andamento}</b><span>Em andamento</span></div></div>
+  <div class="status-card sc-atrasado"><div class="ico">◷</div><div><b>${counts.atrasado}</b><span>Atrasados</span></div></div>
+  <div class="status-card sc-concluido"><div class="ico">✓</div><div><b>${counts.concluido}</b><span>Concluídos</span></div></div>`;
+
+ const m=currentMonth(), os=monthOrders(m), revenue=os.reduce((a,o)=>a+Number(o.total||0),0), rec=os.reduce((a,o)=>a+Number(o.received||0),0), cost=os.reduce((a,o)=>a+Number(o.cost||0),0), bal=os.reduce((a,o)=>a+orderBalance(o),0);
+ document.getElementById('dashCards').innerHTML=[
+  ['Faturamento do mês',money(revenue),''],
+  ['Recebido no mês',money(rec),''],
+  ['A receber',money(bal),''],
+  ['Lucro estimado',money(revenue-cost),''],
+  ['Resultado',money(revenue-cost),'']
+ ].map(x=>`<div class="card"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
+ let recent=[...db.orders].sort((a,b)=>(b.date||'').localeCompare(a.date||'')).slice(0,6);
+ document.getElementById('recentOrders').innerHTML=recent.length?`<table><thead><tr><th>Pedido</th><th>Cliente</th><th>Entrega</th><th>Status</th><th>Total</th></tr></thead><tbody>${recent.map(o=>`<tr><td>${o.number}</td><td>${o.customer}</td><td>${dateBR(o.due)}</td><td>${statusHTML(computedStatus(o))}</td><td>${money(o.total)}</td></tr>`).join('')}</tbody></table>`:'<div class="empty">Nenhum pedido cadastrado.</div>';
+ let completed=os.filter(o=>computedStatus(o)==='Concluído').length;
+ document.getElementById('monthSummary').innerHTML=`<div class="kpi-row">
+ <div class="mini"><b>${os.length}</b><span>pedidos no mês</span></div>
+ <div class="mini"><b>${completed}</b><span>concluídos</span></div>
+ <div class="mini"><b>${db.customers.length}</b><span>clientes</span></div>
+ </div><br><div style="font-size:12px;color:var(--muted)">Recebimento do faturamento</div><br><div class="progress"><i style="width:${revenue?Math.min(100,rec/revenue*100):0}%"></i></div><div style="font-size:12px;margin-top:8px">${revenue?Math.round(rec/revenue*100):0}% recebido</div>`;
+}
+function renderOrders(){
+ let q=(document.getElementById('orderSearch')?.value||'').toLowerCase(), f=document.getElementById('orderStatus')?.value||'';
+ let arr=db.orders.filter(o=>(!q||`${o.number} ${o.customer} ${o.product}`.toLowerCase().includes(q))&&(!f||computedStatus(o)===f));
+ document.getElementById('ordersTable').innerHTML=arr.length?`<table><thead><tr><th>Nº</th><th>Cliente</th><th>Produto</th><th>Entrega</th><th>Status</th><th>Total</th><th>Recebido</th><th>Restante</th><th></th></tr></thead><tbody>${arr.map(o=>`<tr><td><b>${o.number}</b></td><td>${o.customer}</td><td>${o.product} (${o.qty||0})</td><td>${dateBR(o.due)}</td><td>${statusHTML(computedStatus(o))}</td><td>${money(o.total)}</td><td>${money(o.received)}</td><td>${money(orderBalance(o))}</td><td><button class="btn btn-light" onclick="editOrder('${o.id}')">Editar</button></td></tr>`).join('')}</tbody></table>`:'<div class="empty">Nenhum pedido encontrado.</div>';
+}
+function openOrder(existing=null){
+ let o=existing||{id:id('o'),number:'PED-'+String(db.orders.length+1).padStart(4,'0'),date:today(),due:today(),status:'Em andamento',received:0,cost:0};
+ document.getElementById('modalTitle').textContent=existing?'Editar pedido':'Novo pedido';
+ document.getElementById('modalBody').innerHTML=`<div class="form-grid">
+ <div class="field"><label>Número do pedido</label><input id="f_number" value="${o.number}"></div>
+ <div class="field"><label>Data do pedido</label><input id="f_date" type="date" value="${o.date}"></div>
+ <div class="field"><label>Cliente</label><input id="f_customer" list="customerList" value="${o.customer||''}" placeholder="Nome do cliente"><datalist id="customerList">${db.customers.map(c=>`<option value="${c.name}">`).join('')}</datalist></div>
+ <div class="field"><label>WhatsApp</label><input id="f_phone" value="${o.phone||''}"></div>
+ <div class="field"><label>Produto/serviço</label><input id="f_product" list="productList" value="${o.product||''}"><datalist id="productList">${db.products.map(p=>`<option value="${p.name}">`).join('')}</datalist></div>
+ <div class="field"><label>Quantidade</label><input id="f_qty" type="number" min="0" value="${o.qty||1}"></div>
+ <div class="field"><label>Prazo de entrega</label><input id="f_due" type="date" value="${o.due||''}"></div>
+ <div class="field"><label>Status</label><select id="f_status">${['Em andamento','Atrasado','No prazo','Concluído'].map(s=>`<option ${o.status===s?'selected':''}>${s}</option>`).join('')}</select></div>
+ <div class="field"><label>Valor total (R$)</label><input id="f_total" type="number" step="0.01" value="${o.total||0}"></div>
+ <div class="field"><label>Valor recebido (R$)</label><input id="f_received" type="number" step="0.01" value="${o.received||0}"></div>
+ <div class="field"><label>Custo (R$)</label><input id="f_cost" type="number" step="0.01" value="${o.cost||0}"></div>
+ <div class="field"><label>Forma de pagamento</label><select id="f_payment"><option>Pix</option><option>Dinheiro</option><option>Cartão</option><option>Transferência</option><option>Outro</option></select></div>
+ <div class="field full"><label>Observações</label><textarea id="f_notes">${o.notes||''}</textarea></div>
+ </div><div class="actions"><button class="btn btn-light" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveOrder('${o.id}')">Salvar pedido</button></div>`;
+ document.getElementById('f_payment').value=o.payment||'Pix'; document.getElementById('modal').classList.add('open');
+}
+function saveOrder(i){let o=db.orders.find(x=>x.id===i)||{id:i};Object.assign(o,{number:v('f_number'),date:v('f_date'),customer:v('f_customer'),phone:v('f_phone'),product:v('f_product'),qty:+v('f_qty'),due:v('f_due'),status:v('f_status'),total:+v('f_total'),received:+v('f_received'),cost:+v('f_cost'),payment:v('f_payment'),notes:v('f_notes')});if(!db.orders.includes(o))db.orders.push(o);save();closeModal();toast('Pedido salvo!');renderAll()}
+function editOrder(i){openOrder(db.orders.find(o=>o.id===i))}
+function v(id){return document.getElementById(id).value}
+function closeModal(){document.getElementById('modal').classList.remove('open')}
+
+function renderCustomers(){
+ let q=(document.getElementById('customerSearch')?.value||'').toLowerCase(), arr=db.customers.filter(c=>`${c.name} ${c.phone} ${c.instagram||''}`.toLowerCase().includes(q));
+ document.getElementById('customersTable').innerHTML=arr.length?`<table><thead><tr><th>Cliente</th><th>WhatsApp</th><th>Instagram</th><th>Pedidos</th><th>Total comprado</th><th>A receber</th><th></th></tr></thead><tbody>${arr.map(c=>{let os=db.orders.filter(o=>o.customer===c.name);return `<tr><td><b>${c.name}</b></td><td>${c.phone||'-'}</td><td>${c.instagram||'-'}</td><td>${os.length}</td><td>${money(os.reduce((a,o)=>a+Number(o.total||0),0))}</td><td>${money(os.reduce((a,o)=>a+orderBalance(o),0))}</td><td><button class="btn btn-light" onclick="openCustomer(db.customers.find(x=>x.id==='${c.id}'))">Editar</button></td></tr>`}).join('')}</tbody></table>`:'<div class="empty">Nenhum cliente cadastrado.</div>';
+}
+function openCustomer(c=null){c=c||{id:id('c')};document.getElementById('modalTitle').textContent=c.name?'Editar cliente':'Novo cliente';document.getElementById('modalBody').innerHTML=`<div class="form-grid">
+<div class="field"><label>Nome</label><input id="c_name" value="${c.name||''}"></div><div class="field"><label>WhatsApp</label><input id="c_phone" value="${c.phone||''}"></div>
+<div class="field"><label>Instagram</label><input id="c_instagram" value="${c.instagram||''}"></div><div class="field"><label>E-mail</label><input id="c_email" value="${c.email||''}"></div>
+<div class="field"><label>Cidade</label><input id="c_city" value="${c.city||''}"></div><div class="field full"><label>Observações</label><textarea id="c_notes">${c.notes||''}</textarea></div>
+</div><div class="actions"><button class="btn btn-light" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveCustomer('${c.id}')">Salvar cliente</button></div>`;document.getElementById('modal').classList.add('open')}
+function saveCustomer(i){let c=db.customers.find(x=>x.id===i)||{id:i};Object.assign(c,{name:v('c_name'),phone:v('c_phone'),instagram:v('c_instagram'),email:v('c_email'),city:v('c_city'),notes:v('c_notes')});if(!db.customers.includes(c))db.customers.push(c);save();closeModal();toast('Cliente salvo!');renderAll()}
+
+function renderProducts(){document.getElementById('productsTable').innerHTML=db.products.length?`<table><thead><tr><th>Produto</th><th>Unidade</th><th>Preço padrão</th><th>Custo padrão</th><th>Prazo</th><th></th></tr></thead><tbody>${db.products.map(p=>`<tr><td><b>${p.name}</b></td><td>${p.unit||'un.'}</td><td>${money(p.price)}</td><td>${money(p.cost)}</td><td>${p.time||'-'}</td><td><button class="btn btn-light" onclick="openProduct(db.products.find(x=>x.id==='${p.id}'))">Editar</button></td></tr>`).join('')}</tbody></table>`:'<div class="empty">Cadastre seus produtos e preços.</div>'}
+function openProduct(p=null){p=p||{id:id('p')};document.getElementById('modalTitle').textContent=p.name?'Editar produto':'Novo produto';document.getElementById('modalBody').innerHTML=`<div class="form-grid"><div class="field"><label>Produto</label><input id="p_name" value="${p.name||''}"></div><div class="field"><label>Unidade</label><input id="p_unit" value="${p.unit||'un.'}"></div><div class="field"><label>Preço padrão (R$)</label><input id="p_price" type="number" step=".01" value="${p.price||0}"></div><div class="field"><label>Custo padrão (R$)</label><input id="p_cost" type="number" step=".01" value="${p.cost||0}"></div><div class="field"><label>Prazo padrão</label><input id="p_time" value="${p.time||''}" placeholder="Ex.: 3 dias úteis"></div></div><div class="actions"><button class="btn btn-light" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveProduct('${p.id}')">Salvar produto</button></div>`;document.getElementById('modal').classList.add('open')}
+function saveProduct(i){let p=db.products.find(x=>x.id===i)||{id:i};Object.assign(p,{name:v('p_name'),unit:v('p_unit'),price:+v('p_price'),cost:+v('p_cost'),time:v('p_time')});if(!db.products.includes(p))db.products.push(p);save();closeModal();toast('Produto salvo!');renderAll()}
+
+function quoteItems(q){
+ if(Array.isArray(q.items)&&q.items.length)return q.items;
+ return q.product?[{product:q.product,qty:Number(q.qty||1),unit:Number(q.unit||0)}]:[];
+}
+function quoteSubtotal(q){return quoteItems(q).reduce((a,x)=>a+Number(x.qty||0)*Number(x.unit||0),0)}
+function renderQuotes(){
+ document.getElementById('quotesTable').innerHTML=db.quotes.length?`<table><thead><tr><th>Nº</th><th>Cliente</th><th>Produtos</th><th>Data</th><th>Total</th><th>Status</th><th></th></tr></thead><tbody>${db.quotes.map(q=>{let items=quoteItems(q);return `<tr><td>${q.number}</td><td>${q.customer}</td><td>${items.map(x=>`${x.qty}x ${x.product}`).join('<br>')}</td><td>${dateBR(q.date)}</td><td>${money(q.total)}</td><td>${q.status}</td><td><button class="btn btn-light" onclick="convertQuote('${q.id}')">Virar pedido</button></td></tr>`}).join('')}</tbody></table>`:'<div class="empty">Nenhum orçamento cadastrado.</div>'
+}
+let quoteDraftItems=[];
+function quoteItemRow(x={product:'',qty:1,unit:0}){
+ const idx=quoteDraftItems.length;
+ quoteDraftItems.push({product:x.product||'',qty:Number(x.qty||1),unit:Number(x.unit||0)});
+ return idx;
+}
+function renderQuoteItems(){
+ const box=document.getElementById('q_items'); if(!box)return;
+ box.innerHTML=quoteDraftItems.map((x,i)=>`<div style="display:grid;grid-template-columns:minmax(180px,2fr) 90px 130px 120px 42px;gap:8px;align-items:end;margin-bottom:9px">
+ <div class="field"><label>Produto/serviço</label><input data-qi="${i}" data-f="product" value="${String(x.product).replace(/"/g,'&quot;')}" list="qproducts" oninput="updateQuoteItem(this)"></div>
+ <div class="field"><label>Qtd.</label><input data-qi="${i}" data-f="qty" type="number" min="0" step="1" value="${x.qty}" oninput="updateQuoteItem(this)"></div>
+ <div class="field"><label>Valor unit. (R$)</label><input data-qi="${i}" data-f="unit" type="number" min="0" step=".01" value="${x.unit}" oninput="updateQuoteItem(this)"></div>
+ <div class="field"><label>Subtotal</label><input value="${money(Number(x.qty||0)*Number(x.unit||0))}" disabled></div>
+ <button class="btn btn-light" type="button" title="Remover item" onclick="removeQuoteItem(${i})">×</button></div>`).join('');
+ updateQuoteTotal();
+}
+function updateQuoteItem(el){
+ let i=Number(el.dataset.qi),f=el.dataset.f;
+ quoteDraftItems[i][f]=f==='product'?el.value:Number(el.value||0);
+ renderQuoteItems();
+}
+function addQuoteItem(){quoteItemRow();renderQuoteItems()}
+function removeQuoteItem(i){if(quoteDraftItems.length===1)return toast('O orçamento precisa ter pelo menos um produto.');quoteDraftItems.splice(i,1);renderQuoteItems()}
+function updateQuoteTotal(){
+ const sub=quoteDraftItems.reduce((a,x)=>a+Number(x.qty||0)*Number(x.unit||0),0);
+ const dis=Number((document.getElementById('q_discount')||{}).value||0);
+ const el=document.getElementById('q_total_preview'); if(el)el.textContent=money(Math.max(0,sub-dis));
+}
+function openQuote(){
+ let q={id:id('q'),number:'ORC-'+String(db.quotes.length+1).padStart(4,'0'),date:today(),status:'Enviado'};
+ quoteDraftItems=[];quoteItemRow();
+ document.getElementById('modalTitle').textContent='Novo orçamento';
+ document.getElementById('modalBody').innerHTML=`<div class="form-grid"><div class="field"><label>Número</label><input id="q_number" value="${q.number}"></div><div class="field"><label>Data</label><input id="q_date" type="date" value="${q.date}"></div><div class="field"><label>Cliente</label><input id="q_customer" list="qcustomers"><datalist id="qcustomers">${db.customers.map(c=>`<option value="${c.name}">`).join('')}</datalist></div><div class="field"><label>Status</label><select id="q_status"><option>Rascunho</option><option selected>Enviado</option><option>Aguardando resposta</option><option>Aprovado</option><option>Recusado</option></select></div></div>
+ <datalist id="qproducts">${db.products.map(p=>`<option value="${p.name}">`).join('')}</datalist>
+ <div style="margin-top:16px"><div class="panel-head"><h3 style="margin:0">Produtos do orçamento</h3><button class="btn btn-light" type="button" onclick="addQuoteItem()">+ Adicionar produto</button></div><div id="q_items"></div></div>
+ <div class="form-grid" style="margin-top:12px"><div class="field"><label>Desconto (R$)</label><input id="q_discount" type="number" step=".01" value="0" oninput="updateQuoteTotal()"></div><div class="field"><label>Total do orçamento</label><div id="q_total_preview" style="font-size:22px;font-weight:800;color:#10264b;padding:10px 0">R$ 0,00</div></div><div class="field full"><label>Observações</label><textarea id="q_notes"></textarea></div></div>
+ <div class="actions"><button class="btn btn-light" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveQuote('${q.id}')">Salvar orçamento</button></div>`;
+ document.getElementById('modal').classList.add('open');renderQuoteItems()
+}
+function saveQuote(i){
+ let items=quoteDraftItems.filter(x=>String(x.product||'').trim()).map(x=>({product:String(x.product).trim(),qty:Number(x.qty||0),unit:Number(x.unit||0)}));
+ if(!v('q_customer'))return toast('Informe o cliente.');
+ if(!items.length)return toast('Adicione pelo menos um produto.');
+ let discount=Number(v('q_discount')||0),subtotal=items.reduce((a,x)=>a+x.qty*x.unit,0);
+ let q={id:i,number:v('q_number'),date:v('q_date'),customer:v('q_customer'),items,discount,total:Math.max(0,subtotal-discount),status:v('q_status'),notes:v('q_notes')};
+ db.quotes.push(q);save();closeModal();toast('Orçamento salvo!');renderAll()
+}
+function convertQuote(i){
+ let q=db.quotes.find(x=>x.id===i);if(!q)return;
+ let items=quoteItems(q);
+ openOrder({id:id('o'),number:'PED-'+String(db.orders.length+1).padStart(4,'0'),date:today(),due:today(),status:'Em andamento',customer:q.customer,product:items.map(x=>`${x.qty}x ${x.product}`).join(' | '),qty:items.reduce((a,x)=>a+Number(x.qty||0),0),total:q.total,received:0,cost:0});
+}
+
+function renderFinance(){let m=currentMonth(), os=monthOrders(m), rec=os.reduce((a,o)=>a+Number(o.received||0),0), receivable=os.reduce((a,o)=>a+orderBalance(o),0), expenses=db.finance.filter(x=>x.type==='Saída'&&(x.date||'').slice(0,7)===m).reduce((a,x)=>a+Number(x.value||0),0);document.getElementById('financeCards').innerHTML=[['Recebido',money(rec)],['A receber',money(receivable)],['Despesas lançadas',money(expenses)],['Saldo',money(rec-expenses)]].map(x=>`<div class="card"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');document.getElementById('financeTable').innerHTML=`<table><thead><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th>Forma</th><th>Valor</th></tr></thead><tbody>${db.finance.sort((a,b)=>b.date.localeCompare(a.date)).map(x=>`<tr><td>${dateBR(x.date)}</td><td>${x.desc}</td><td>${x.type}</td><td>${x.payment}</td><td>${money(x.value)}</td></tr>`).join('')}</tbody></table>`}
+function openFinance(){let x={id:id('f'),date:today(),type:'Entrada',payment:'Pix'};document.getElementById('modalTitle').textContent='Novo lançamento';document.getElementById('modalBody').innerHTML=`<div class="form-grid"><div class="field"><label>Data</label><input id="fi_date" type="date" value="${x.date}"></div><div class="field"><label>Tipo</label><select id="fi_type"><option>Entrada</option><option>Saída</option></select></div><div class="field"><label>Descrição</label><input id="fi_desc"></div><div class="field"><label>Forma de pagamento</label><select id="fi_payment"><option>Pix</option><option>Dinheiro</option><option>Cartão</option><option>Transferência</option><option>Outro</option></select></div><div class="field"><label>Valor (R$)</label><input id="fi_value" type="number" step=".01"></div></div><div class="actions"><button class="btn btn-light" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveFinance('${x.id}')">Salvar lançamento</button></div>`;document.getElementById('modal').classList.add('open')}
+function saveFinance(i){db.finance.push({id:i,date:v('fi_date'),type:v('fi_type'),desc:v('fi_desc'),payment:v('fi_payment'),value:+v('fi_value')});save();closeModal();toast('Lançamento salvo!');renderAll()}
+
+function renderReports(){let m=document.getElementById('reportMonth').value||currentMonth();let os=monthOrders(m), rev=os.reduce((a,o)=>a+Number(o.total||0),0), rec=os.reduce((a,o)=>a+Number(o.received||0),0), cost=os.reduce((a,o)=>a+Number(o.cost||0),0);document.getElementById('reportCards').innerHTML=[['Faturamento',money(rev)],['Recebido',money(rec)],['A receber',money(rev-rec)],['Custos',money(cost)],['Resultado',money(rev-cost)],['Pedidos',os.length]].map(x=>`<div class="card"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');document.getElementById('reportOrders').innerHTML=os.length?`<table><thead><tr><th>Nº</th><th>Cliente</th><th>Status</th><th>Total</th><th>Resultado</th></tr></thead><tbody>${os.map(o=>`<tr><td>${o.number}</td><td>${o.customer}</td><td>${statusHTML(computedStatus(o))}</td><td>${money(o.total)}</td><td>${money(Number(o.total||0)-Number(o.cost||0))}</td></tr>`).join('')}</tbody></table>`:'<div class="empty">Não há pedidos no período.</div>'}
+
+function exportData(){let blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='backup-forms-criacoes.json';a.click();toast('Backup exportado!')}
+function importData(e){let file=e.target.files[0];if(!file)return;let r=new FileReader();r.onload=()=>{try{let x=JSON.parse(r.result);if(x.orders&&x.customers){db=x;save();renderAll();toast('Backup restaurado!')}}catch(err){alert('Arquivo de backup inválido.')}};r.readAsText(file)}
+function renderAll(){renderDashboard();renderOrders();renderQuotes();renderCustomers();renderProducts();renderFinance();renderReports()}
+document.getElementById('reportMonth').value=currentMonth();renderAll();
+</script>
+</body>
+</html>
