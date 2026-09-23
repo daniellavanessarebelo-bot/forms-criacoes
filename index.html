@@ -319,18 +319,24 @@ function quoteItemRow(x={product:'',qty:1,unit:0}){
 }
 function renderQuoteItems(){
  const box=document.getElementById('q_items'); if(!box)return;
- box.innerHTML=quoteDraftItems.map((x,i)=>`<div style="display:grid;grid-template-columns:minmax(180px,2fr) 90px 130px 120px 42px;gap:8px;align-items:end;margin-bottom:9px">
+ box.innerHTML=quoteDraftItems.map((x,i)=>`<div data-quote-row style="display:grid;grid-template-columns:minmax(180px,2fr) 90px 130px 120px 42px;gap:8px;align-items:end;margin-bottom:9px">
  <div class="field"><label>Produto/serviço</label><input data-qi="${i}" data-f="product" value="${String(x.product).replace(/"/g,'&quot;')}" list="qproducts" oninput="updateQuoteItem(this)"></div>
  <div class="field"><label>Qtd.</label><input data-qi="${i}" data-f="qty" type="number" min="0" step="1" value="${x.qty}" oninput="updateQuoteItem(this)"></div>
  <div class="field"><label>Valor unit. (R$)</label><input data-qi="${i}" data-f="unit" type="number" min="0" step=".01" value="${x.unit}" oninput="updateQuoteItem(this)"></div>
- <div class="field"><label>Subtotal</label><input value="${money(Number(x.qty||0)*Number(x.unit||0))}" disabled></div>
+ <div class="field"><label>Subtotal</label><input data-subtotal value="${money(Number(x.qty||0)*Number(x.unit||0))}" disabled></div>
  <button class="btn btn-light" type="button" title="Remover item" onclick="removeQuoteItem(${i})">×</button></div>`).join('');
  updateQuoteTotal();
 }
 function updateQuoteItem(el){
  let i=Number(el.dataset.qi),f=el.dataset.f;
  quoteDraftItems[i][f]=f==='product'?el.value:Number(el.value||0);
- renderQuoteItems();
+ const row=el.closest('[data-quote-row]');
+ if(row){
+  const item=quoteDraftItems[i];
+  const subtotal=row.querySelector('[data-subtotal]');
+  if(subtotal) subtotal.value=money(Number(item.qty||0)*Number(item.unit||0));
+ }
+ updateQuoteTotal();
 }
 function addQuoteItem(){quoteItemRow();renderQuoteItems()}
 function removeQuoteItem(i){if(quoteDraftItems.length===1)return toast('O orçamento precisa ter pelo menos um produto.');quoteDraftItems.splice(i,1);renderQuoteItems()}
