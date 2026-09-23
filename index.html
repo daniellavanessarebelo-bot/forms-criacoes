@@ -132,8 +132,20 @@ table{font-size:12px}th,td{padding:11px 8px}
 @media(max-width:1200px){.dashboard-status{grid-template-columns:repeat(2,1fr)}.cards{grid-template-columns:repeat(2,1fr)!important}.grid2{grid-template-columns:1fr}}
 
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
+<div id="loginGate" style="display:none;position:fixed;inset:0;z-index:9999;background:linear-gradient(135deg,#fff,#fff7f9 60%,#f3fffc);align-items:center;justify-content:center;padding:24px">
+ <div style="width:min(430px,100%);background:#fff;border:1px solid #edf0f4;border-radius:20px;padding:30px;box-shadow:0 20px 60px rgba(16,38,75,.12);text-align:center">
+  <img src="logo.png" alt="Forms Criações Personalizadas" style="width:180px;height:150px;object-fit:contain">
+  <h2 style="margin:0 0 6px;color:#10264b">Acesso ao Sistema</h2>
+  <p style="margin:0 0 22px;color:#68758b;font-size:14px">Entre com seu e-mail e senha.</p>
+  <div class="field" style="text-align:left"><label>E-mail</label><input id="loginEmail" type="email" autocomplete="username"></div>
+  <div class="field" style="text-align:left"><label>Senha</label><input id="loginPassword" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')loginForms()"></div>
+  <div id="loginError" style="min-height:20px;color:#c92355;font-size:12px;margin-bottom:8px"></div>
+  <button id="loginBtn" class="btn btn-primary" style="width:100%;padding:12px" onclick="loginForms()">Entrar</button>
+ </div>
+</div>
 <div class="app">
 <aside class="sidebar">
   <div class="brand brand-full"><img class="brand-logo" src="logo.png" alt="Forms Criações Personalizadas"></div>
@@ -149,6 +161,7 @@ table{font-size:12px}th,td{padding:11px 8px}
   <div style="position:absolute;bottom:18px;left:16px;right:16px">
     <button class="btn btn-light" style="width:100%" onclick="exportData()">Backup dos dados</button>
     <label class="btn btn-light" style="width:100%;display:block;text-align:center;margin-top:7px">Restaurar backup<input type="file" accept=".json" onchange="importData(event)" style="display:none"></label>
+    <button class="btn btn-light" style="width:100%;margin-top:7px" onclick="logoutForms()">Sair</button>
   </div>
 </aside>
 
@@ -203,9 +216,53 @@ table{font-size:12px}th,td{padding:11px 8px}
 <div class="toast" id="toast"></div>
 
 <script>
+const SUPABASE_URL='https://ylizcojnkdridnlbbagw.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY='sb_publishable_u4-d9gYhMgX5HOpkzuZsPA_xqOYgO4S';
+const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
+let currentUser=null;
 const KEY='forms_criacoes_gestao_v1';
 let db=JSON.parse(localStorage.getItem(KEY)||'null')||{orders:[],quotes:[],customers:[],products:[],finance:[]};
-function save(){localStorage.setItem(KEY,JSON.stringify(db));}
+let syncTimer=null;
+function save(){
+ localStorage.setItem(KEY,JSON.stringify(db));
+ if(currentUser){clearTimeout(syncTimer);syncTimer=setTimeout(syncCloud,600)}
+}
+function hasLocalData(){return ['orders','quotes','customers','products','finance'].some(k=>Array.isArray(db[k])&&db[k].length)}
+async function syncCloud(){
+ if(!currentUser)return;
+ const {error}=await sb.from('forms_dados').upsert({user_id:currentUser.id,dados:db,atualizado_em:new Date().toISOString()},{onConflict:'user_id'});
+ if(error){console.error('Falha ao sincronizar:',error);toast('Dados salvos neste dispositivo; sincronização pendente.')}
+}
+async function loadCloud(){
+ const {data,error}=await sb.from('forms_dados').select('dados,atualizado_em').eq('user_id',currentUser.id).maybeSingle();
+ if(error){console.error(error);toast('Não foi possível acessar a nuvem. Seus dados locais foram preservados.');return}
+ if(data&&data.dados){
+  db=data.dados;localStorage.setItem(KEY,JSON.stringify(db));renderAll();toast('Dados sincronizados!');
+ }else if(hasLocalData()){
+  const ok=confirm('Encontramos dados salvos neste dispositivo e ainda não há dados na nuvem. Deseja enviar estes dados para a nuvem agora?');
+  if(ok){await syncCloud();toast('Dados enviados para a nuvem!')}
+ }else{
+  await syncCloud();
+ }
+}
+function showLogin(show=true){document.getElementById('loginGate').style.display=show?'flex':'none'}
+async function loginForms(){
+ const email=document.getElementById('loginEmail').value.trim(),password=document.getElementById('loginPassword').value;
+ const btn=document.getElementById('loginBtn'),err=document.getElementById('loginError');err.textContent='';
+ if(!email||!password){err.textContent='Informe seu e-mail e sua senha.';return}
+ btn.disabled=true;btn.textContent='Entrando...';
+ const {data,error}=await sb.auth.signInWithPassword({email,password});
+ btn.disabled=false;btn.textContent='Entrar';
+ if(error){err.textContent='E-mail ou senha inválidos.';return}
+ currentUser=data.user;showLogin(false);await loadCloud();
+}
+async function logoutForms(){await sb.auth.signOut();currentUser=null;showLogin(true)}
+async function initAuth(){
+ const {data}=await sb.auth.getSession();
+ if(data.session){currentUser=data.session.user;showLogin(false);await loadCloud()}
+ else showLogin(true);
+ sb.auth.onAuthStateChange((event,session)=>{if(event==='SIGNED_OUT'){currentUser=null;showLogin(true)}});
+}
 function money(v){return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}
 function dateBR(s){if(!s)return '-';let d=new Date(s+'T12:00:00');return d.toLocaleDateString('pt-BR')}
 function today(){return new Date().toISOString().slice(0,10)}
@@ -403,7 +460,7 @@ function renderReports(){let m=document.getElementById('reportMonth').value||cur
 function exportData(){let blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='backup-forms-criacoes.json';a.click();toast('Backup exportado!')}
 function importData(e){let file=e.target.files[0];if(!file)return;let r=new FileReader();r.onload=()=>{try{let x=JSON.parse(r.result);if(x.orders&&x.customers){db=x;save();renderAll();toast('Backup restaurado!')}}catch(err){alert('Arquivo de backup inválido.')}};r.readAsText(file)}
 function renderAll(){renderDashboard();renderOrders();renderQuotes();renderCustomers();renderProducts();renderFinance();renderReports()}
-document.getElementById('reportMonth').value=currentMonth();renderAll();
+document.getElementById('reportMonth').value=currentMonth();renderAll();initAuth();
 </script>
 </body>
 </html>
