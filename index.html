@@ -235,7 +235,8 @@ table{font-size:12px}th,td{padding:11px 8px}
   <div class="toolbar" style="margin-bottom:12px"><input id="financeMonth" type="month" onchange="renderFinance()"><select id="financeType" onchange="renderFinance()"><option value="">Todos os lançamentos</option><option>Entrada</option><option>Saída</option></select></div>
   <div class="cards" id="financeCards"></div>
   <div class="panel"><div class="panel-head"><h2>Contas a receber</h2></div><div id="receivablesTable"></div></div>
-  <div class="panel" style="margin-top:14px"><div class="panel-head"><h2>Lançamentos</h2></div><div id="financeTable"></div></div>
+  <div class="panel" style="margin-top:14px"><div class="panel-head"><h2>Histórico de recebimentos</h2></div><div id="paymentHistory"></div></div>
+  <div class="panel" style="margin-top:14px"><div class="panel-head"><h2>Lançamentos gerais</h2></div><div id="financeTable"></div></div>
 </section>
 
 <section id="relatorios" class="page" style="display:none">
@@ -506,11 +507,22 @@ function renderFinance(){
   ['Recebido no mês',money(received)],['A receber',money(receivable)],['Despesas',money(expenses)],
   ['Custos dos pedidos',money(orderCosts)],['Resultado de caixa',money(result)]
  ].map(x=>`<div class="card"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
- let pending=db.orders.filter(o=>orderBalance(o)>0).sort((a,b)=>(a.due||'').localeCompare(b.due||''));
- document.getElementById('receivablesTable').innerHTML=pending.length?`<table><thead><tr><th>Pedido</th><th>Cliente</th><th>Venc./entrega</th><th>Total</th><th>Recebido</th><th>A receber</th><th></th></tr></thead><tbody>${pending.map(o=>`<tr><td>${o.number}</td><td>${o.customer}</td><td>${dateBR(o.due)}</td><td>${money(o.total)}</td><td>${money(o.received)}</td><td><b>${money(orderBalance(o))}</b></td><td><div style="display:flex;gap:6px"><button class="btn btn-primary" onclick="openOrderPayment('${o.id}')">Receber</button><button class="btn btn-light" onclick="editOrder('${o.id}')">Pedido</button></div></td></tr>`).join('')}</tbody></table>`:'<div class="empty">Nenhum valor pendente para receber.</div>';
- let arr=[...db.finance].filter(x=>(x.date||'').slice(0,7)===m&&(!type||x.type===type)).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
- document.getElementById('financeTable').innerHTML=arr.length?`<table><thead><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th>Forma</th><th>Valor</th><th>Ações</th></tr></thead><tbody>${arr.map(x=>`<tr><td>${dateBR(x.date)}</td><td>${x.desc}${x.orderId?'<div style="font-size:11px;color:var(--muted);margin-top:3px">Pagamento vinculado ao pedido</div>':''}</td><td>${x.type}</td><td>${x.payment}</td><td>${money(x.value)}</td><td><div style="display:flex;gap:6px">${x.orderId?`<button class="btn btn-light" onclick="openOrderPayment('${x.orderId}')">Novo pagamento</button>`:`<button class="btn btn-light" onclick="openFinance(db.finance.find(f=>f.id==='${x.id}'))">Editar</button>`}<button class="btn btn-light" onclick="deleteFinance('${x.id}')">Excluir</button></div></td></tr>`).join('')}</tbody></table>`:'<div class="empty">Nenhum lançamento neste período.</div>';
+ let accounts=db.orders.filter(o=>Number(o.total||0)>0).sort((a,b)=>(a.due||'').localeCompare(b.due||''));
+ document.getElementById('receivablesTable').innerHTML=accounts.length?`<table><thead><tr><th>Pedido</th><th>Cliente</th><th>Venc./entrega</th><th>Total</th><th>Recebido</th><th>A receber</th><th>Situação</th><th></th></tr></thead><tbody>${accounts.map(o=>{let bal=orderBalance(o),rec=Number(o.received||0),sit=bal<=0?'Quitado':rec>0?'Parcialmente pago':'Pendente',cls=bal<=0?'st-concluido':rec>0?'st-andamento':'st-atrasado';return `<tr><td>${o.number}</td><td>${o.customer}</td><td>${dateBR(o.due)}</td><td>${money(o.total)}</td><td>${money(rec)}</td><td><b>${money(bal)}</b></td><td><span class="status ${cls}">${sit}</span></td><td><div style="display:flex;gap:6px">${bal>0?`<button class="btn btn-primary" onclick="openOrderPayment('${o.id}')">Receber</button>`:''}<button class="btn btn-light" onclick="showPaymentHistory('${o.id}')">Histórico</button><button class="btn btn-light" onclick="editOrder('${o.id}')">Pedido</button></div></td></tr>`}).join('')}</tbody></table>`:'<div class="empty">Nenhum pedido financeiro cadastrado.</div>';
+ renderPaymentHistory();
+ let arr=[...db.finance].filter(x=>!x.orderId&&(x.date||'').slice(0,7)===m&&(!type||x.type===type)).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+ document.getElementById('financeTable').innerHTML=arr.length?`<table><thead><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th>Forma</th><th>Valor</th><th>Ações</th></tr></thead><tbody>${arr.map(x=>`<tr><td>${dateBR(x.date)}</td><td>${x.desc}${x.orderId?'<div style="font-size:11px;color:var(--muted);margin-top:3px">Pagamento vinculado ao pedido</div>':''}</td><td>${x.type}</td><td>${x.payment}</td><td>${money(x.value)}</td><td><div style="display:flex;gap:6px">${x.orderId?`<button class="btn btn-light" onclick="openOrderPayment('${x.orderId}')">Novo pagamento</button>`:`<button class="btn btn-light" onclick="openFinance(db.finance.find(f=>f.id==='${x.id}'))">Editar</button>`}<button class="btn btn-light" onclick="deleteFinance('${x.id}')">Excluir</button></div></td></tr>`).join('')}</tbody></table>`:'<div class="empty">Nenhum lançamento geral neste período.</div>';
 }
+let paymentHistoryOrderId=null;
+function renderPaymentHistory(orderId=paymentHistoryOrderId){
+ paymentHistoryOrderId=orderId||null;
+ let entries=db.finance.filter(x=>x.orderId&&(!paymentHistoryOrderId||x.orderId===paymentHistoryOrderId)).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+ let title=paymentHistoryOrderId?db.orders.find(o=>o.id===paymentHistoryOrderId):null;
+ let el=document.getElementById('paymentHistory');if(!el)return;
+ el.innerHTML=(title?`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px"><div><b>${title.number} · ${title.customer}</b><div style="font-size:12px;color:var(--muted)">Total recebido no pedido: ${money(title.received||0)}</div></div><button class="btn btn-light" onclick="showPaymentHistory()">Mostrar todos</button></div>`:'')+
+ (entries.length?`<table><thead><tr><th>Data</th><th>Pedido</th><th>Cliente</th><th>Forma</th><th>Valor</th><th></th></tr></thead><tbody>${entries.map(x=>{let o=db.orders.find(o=>o.id===x.orderId);return `<tr><td>${dateBR(x.date)}</td><td>${o?o.number:'-'}</td><td>${o?o.customer:'-'}</td><td>${x.payment||'-'}</td><td><b>${money(x.value)}</b></td><td><button class="btn btn-light" onclick="deleteFinance('${x.id}')">Excluir/estornar</button></td></tr>`}).join('')}</tbody></table>`:'<div class="empty">Nenhum recebimento registrado pelo Financeiro ainda.</div>');
+}
+function showPaymentHistory(orderId=null){renderPaymentHistory(orderId);document.getElementById('paymentHistory')?.scrollIntoView({behavior:'smooth',block:'center'})}
 function openOrderPayment(orderId){
  let o=db.orders.find(x=>x.id===orderId);if(!o)return;
  let balance=orderBalance(o);if(balance<=0){alert('Este pedido já está totalmente pago.');return}
