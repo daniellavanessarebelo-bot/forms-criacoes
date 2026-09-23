@@ -309,7 +309,30 @@ function quoteItems(q){
 }
 function quoteSubtotal(q){return quoteItems(q).reduce((a,x)=>a+Number(x.qty||0)*Number(x.unit||0),0)}
 function renderQuotes(){
- document.getElementById('quotesTable').innerHTML=db.quotes.length?`<table><thead><tr><th>Nº</th><th>Cliente</th><th>Produtos</th><th>Data</th><th>Total</th><th>Status</th><th></th></tr></thead><tbody>${db.quotes.map(q=>{let items=quoteItems(q);return `<tr><td>${q.number}</td><td>${q.customer}</td><td>${items.map(x=>`${x.qty}x ${x.product}`).join('<br>')}</td><td>${dateBR(q.date)}</td><td>${money(q.total)}</td><td>${q.status}</td><td><button class="btn btn-light" onclick="convertQuote('${q.id}')">Virar pedido</button></td></tr>`}).join('')}</tbody></table>`:'<div class="empty">Nenhum orçamento cadastrado.</div>'
+ const statuses=['Rascunho','Enviado','Aguardando resposta','Aprovado','Recusado'];
+ document.getElementById('quotesTable').innerHTML=db.quotes.length?`<table><thead><tr><th>Nº</th><th>Cliente</th><th>Produtos</th><th>Data</th><th>Total</th><th>Status</th><th>Ações</th></tr></thead><tbody>${db.quotes.map(q=>{let items=quoteItems(q);return `<tr><td>${q.number}</td><td>${q.customer}</td><td>${items.map(x=>`${x.qty}x ${x.product}`).join('<br>')}</td><td>${dateBR(q.date)}</td><td>${money(q.total)}</td><td><select style="min-width:150px;padding:7px" onchange="updateQuoteStatus('${q.id}',this.value)">${statuses.map(s=>`<option ${q.status===s?'selected':''}>${s}</option>`).join('')}</select></td><td><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-light" onclick="printQuote('${q.id}')">PDF</button><button class="btn btn-light" onclick="convertQuote('${q.id}')">Virar pedido</button></div></td></tr>`}).join('')}</tbody></table>`:'<div class="empty">Nenhum orçamento cadastrado.</div>'
+}
+function updateQuoteStatus(i,status){
+ let q=db.quotes.find(x=>x.id===i);if(!q)return;
+ q.status=status;save();toast('Status do orçamento atualizado!');
+}
+function htmlSafe(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function printQuote(i){
+ const q=db.quotes.find(x=>x.id===i);if(!q)return;
+ const items=quoteItems(q), subtotal=items.reduce((a,x)=>a+Number(x.qty||0)*Number(x.unit||0),0);
+ const logo=new URL('logo.png',location.href).href;
+ const w=window.open('','_blank','width=900,height=900');
+ if(!w)return toast('Permita pop-ups para emitir o PDF.');
+ w.document.write(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>${htmlSafe(q.number)} - Orçamento</title><style>
+ @page{size:A4;margin:14mm}*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#10264b;margin:0;background:#fff}.head{display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #e83269;padding-bottom:14px;margin-bottom:22px}.logo{width:145px;height:110px;object-fit:contain}.title{text-align:right}.title h1{margin:0;color:#10264b;font-size:28px}.title b{color:#e83269}.info{display:grid;grid-template-columns:1fr 1fr;gap:10px;background:#fff7f9;border-radius:12px;padding:14px;margin-bottom:20px}.label{font-size:11px;color:#68758b;text-transform:uppercase}.val{font-weight:700;margin-top:3px}table{width:100%;border-collapse:collapse;margin-top:10px}th{background:#10264b;color:#fff;text-align:left;padding:10px;font-size:12px}td{padding:10px;border-bottom:1px solid #e8ebf0;font-size:12px}.num{text-align:right}.totals{margin-left:auto;width:310px;margin-top:18px}.totals div{display:flex;justify-content:space-between;padding:7px 0}.grand{font-size:20px;font-weight:800;color:#e83269;border-top:2px solid #10264b}.notes{margin-top:24px;padding:14px;border:1px solid #e8ebf0;border-radius:10px;white-space:pre-wrap}.foot{margin-top:34px;text-align:center;color:#6a7588;font-size:11px;border-top:1px solid #eee;padding-top:12px}@media print{button{display:none}}
+ </style></head><body><div class="head"><img class="logo" src="${logo}"><div class="title"><h1>ORÇAMENTO</h1><b>${htmlSafe(q.number)}</b></div></div>
+ <div class="info"><div><div class="label">Cliente</div><div class="val">${htmlSafe(q.customer)}</div></div><div><div class="label">Data</div><div class="val">${dateBR(q.date)}</div></div><div><div class="label">Status</div><div class="val">${htmlSafe(q.status)}</div></div></div>
+ <table><thead><tr><th>Produto/serviço</th><th class="num">Qtd.</th><th class="num">Valor unit.</th><th class="num">Subtotal</th></tr></thead><tbody>${items.map(x=>`<tr><td>${htmlSafe(x.product)}</td><td class="num">${x.qty}</td><td class="num">${money(x.unit)}</td><td class="num">${money(Number(x.qty||0)*Number(x.unit||0))}</td></tr>`).join('')}</tbody></table>
+ <div class="totals"><div><span>Subtotal</span><b>${money(subtotal)}</b></div><div><span>Desconto</span><b>${money(q.discount||0)}</b></div><div class="grand"><span>Total</span><span>${money(q.total)}</span></div></div>
+ ${q.notes?`<div class="notes"><div class="label">Observações</div><div style="margin-top:6px">${htmlSafe(q.notes)}</div></div>`:''}
+ <div class="foot"><b>Forms Criações Personalizadas</b><br>Mais que personalizados, realizamos histórias!</div>
+ <script>window.onload=()=>setTimeout(()=>window.print(),350)<\/script></body></html>`);
+ w.document.close();
 }
 let quoteDraftItems=[];
 function quoteItemRow(x={product:'',qty:1,unit:0}){
@@ -367,6 +390,7 @@ function saveQuote(i){
 function convertQuote(i){
  let q=db.quotes.find(x=>x.id===i);if(!q)return;
  let items=quoteItems(q);
+ q.status='Aprovado';save();renderQuotes();
  openOrder({id:id('o'),number:'PED-'+String(db.orders.length+1).padStart(4,'0'),date:today(),due:today(),status:'Em andamento',customer:q.customer,product:items.map(x=>`${x.qty}x ${x.product}`).join(' | '),qty:items.reduce((a,x)=>a+Number(x.qty||0),0),total:q.total,received:0,cost:0});
 }
 
