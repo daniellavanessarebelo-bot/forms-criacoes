@@ -498,7 +498,7 @@ function renderFinance(){
  let m=document.getElementById('financeMonth')?.value||currentMonth(), type=document.getElementById('financeType')?.value||'';
  let os=monthOrders(m), orderReceived=os.reduce((a,o)=>a+Number(o.received||0),0), receivable=db.orders.reduce((a,o)=>a+orderBalance(o),0);
  let monthEntries=db.finance.filter(x=>(x.date||'').slice(0,7)===m);
- let manualIn=monthEntries.filter(x=>x.type==='Entrada').reduce((a,x)=>a+Number(x.value||0),0);
+ let manualIn=monthEntries.filter(x=>x.type==='Entrada'&&!x.orderId).reduce((a,x)=>a+Number(x.value||0),0);
  let expenses=monthEntries.filter(x=>x.type==='Saída').reduce((a,x)=>a+Number(x.value||0),0);
  let orderCosts=os.reduce((a,o)=>a+Number(o.cost||0),0);
  let received=orderReceived+manualIn, result=received-expenses-orderCosts;
@@ -507,9 +507,30 @@ function renderFinance(){
   ['Custos dos pedidos',money(orderCosts)],['Resultado de caixa',money(result)]
  ].map(x=>`<div class="card"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('');
  let pending=db.orders.filter(o=>orderBalance(o)>0).sort((a,b)=>(a.due||'').localeCompare(b.due||''));
- document.getElementById('receivablesTable').innerHTML=pending.length?`<table><thead><tr><th>Pedido</th><th>Cliente</th><th>Venc./entrega</th><th>Total</th><th>Recebido</th><th>A receber</th><th></th></tr></thead><tbody>${pending.map(o=>`<tr><td>${o.number}</td><td>${o.customer}</td><td>${dateBR(o.due)}</td><td>${money(o.total)}</td><td>${money(o.received)}</td><td><b>${money(orderBalance(o))}</b></td><td><button class="btn btn-light" onclick="editOrder('${o.id}')">Atualizar</button></td></tr>`).join('')}</tbody></table>`:'<div class="empty">Nenhum valor pendente para receber.</div>';
+ document.getElementById('receivablesTable').innerHTML=pending.length?`<table><thead><tr><th>Pedido</th><th>Cliente</th><th>Venc./entrega</th><th>Total</th><th>Recebido</th><th>A receber</th><th></th></tr></thead><tbody>${pending.map(o=>`<tr><td>${o.number}</td><td>${o.customer}</td><td>${dateBR(o.due)}</td><td>${money(o.total)}</td><td>${money(o.received)}</td><td><b>${money(orderBalance(o))}</b></td><td><div style="display:flex;gap:6px"><button class="btn btn-primary" onclick="openOrderPayment('${o.id}')">Receber</button><button class="btn btn-light" onclick="editOrder('${o.id}')">Pedido</button></div></td></tr>`).join('')}</tbody></table>`:'<div class="empty">Nenhum valor pendente para receber.</div>';
  let arr=[...db.finance].filter(x=>(x.date||'').slice(0,7)===m&&(!type||x.type===type)).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
- document.getElementById('financeTable').innerHTML=arr.length?`<table><thead><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th>Forma</th><th>Valor</th><th>Ações</th></tr></thead><tbody>${arr.map(x=>`<tr><td>${dateBR(x.date)}</td><td>${x.desc}</td><td>${x.type}</td><td>${x.payment}</td><td>${money(x.value)}</td><td><div style="display:flex;gap:6px"><button class="btn btn-light" onclick="openFinance(db.finance.find(f=>f.id==='${x.id}'))">Editar</button><button class="btn btn-light" onclick="deleteFinance('${x.id}')">Excluir</button></div></td></tr>`).join('')}</tbody></table>`:'<div class="empty">Nenhum lançamento neste período.</div>';
+ document.getElementById('financeTable').innerHTML=arr.length?`<table><thead><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th>Forma</th><th>Valor</th><th>Ações</th></tr></thead><tbody>${arr.map(x=>`<tr><td>${dateBR(x.date)}</td><td>${x.desc}${x.orderId?'<div style="font-size:11px;color:var(--muted);margin-top:3px">Pagamento vinculado ao pedido</div>':''}</td><td>${x.type}</td><td>${x.payment}</td><td>${money(x.value)}</td><td><div style="display:flex;gap:6px">${x.orderId?`<button class="btn btn-light" onclick="openOrderPayment('${x.orderId}')">Novo pagamento</button>`:`<button class="btn btn-light" onclick="openFinance(db.finance.find(f=>f.id==='${x.id}'))">Editar</button>`}<button class="btn btn-light" onclick="deleteFinance('${x.id}')">Excluir</button></div></td></tr>`).join('')}</tbody></table>`:'<div class="empty">Nenhum lançamento neste período.</div>';
+}
+function openOrderPayment(orderId){
+ let o=db.orders.find(x=>x.id===orderId);if(!o)return;
+ let balance=orderBalance(o);if(balance<=0){alert('Este pedido já está totalmente pago.');return}
+ document.getElementById('modalTitle').textContent='Registrar pagamento';
+ document.getElementById('modalBody').innerHTML=`<div class="panel" style="margin-bottom:14px"><div style="font-size:13px;color:var(--muted)">Pedido</div><div style="font-size:18px;font-weight:800">${o.number} · ${o.customer}</div><div style="margin-top:8px">Total: <b>${money(o.total)}</b> &nbsp; Recebido: <b>${money(o.received)}</b> &nbsp; Restante: <b>${money(balance)}</b></div></div>
+ <div class="form-grid"><div class="field"><label>Data do pagamento</label><input id="pay_date" type="date" value="${today()}"></div><div class="field"><label>Valor recebido (R$)</label><input id="pay_value" type="number" min="0.01" max="${balance}" step=".01" value="${balance}"></div><div class="field"><label>Forma de pagamento</label><select id="pay_method"><option>Pix</option><option>Dinheiro</option><option>Cartão</option><option>Transferência</option><option>Outro</option></select></div><div class="field"><label>Tipo</label><select id="pay_kind"><option value="Parcial">Pagamento parcial</option><option value="Total">Quitar saldo total</option></select></div><div class="field full"><label>Observação</label><input id="pay_notes" placeholder="Opcional"></div></div>
+ <div class="actions"><button class="btn btn-light" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveOrderPayment('${o.id}')">Registrar pagamento</button></div>`;
+ document.getElementById('pay_method').value=o.payment||'Pix';
+ document.getElementById('pay_kind').onchange=function(){if(this.value==='Total')document.getElementById('pay_value').value=orderBalance(o)};
+ document.getElementById('modal').classList.add('open')
+}
+function saveOrderPayment(orderId){
+ let o=db.orders.find(x=>x.id===orderId);if(!o)return;
+ let balance=orderBalance(o), kind=v('pay_kind'), amount=kind==='Total'?balance:+v('pay_value');
+ if(!(amount>0)){alert('Informe um valor maior que zero.');return}
+ if(amount>balance+0.001){alert('O valor recebido não pode ser maior que o saldo do pedido.');return}
+ let method=v('pay_method'), date=v('pay_date'), notes=v('pay_notes');
+ o.received=Number(o.received||0)+amount;o.payment=method;
+ db.finance.push({id:id('f'),date,type:'Entrada',desc:`Recebimento ${o.number} - ${o.customer}${notes?' - '+notes:''}`,payment:method,value:amount,orderId:o.id,paymentEntry:true});
+ save();closeModal();renderAll();toast(orderBalance(o)<=0?'Pagamento registrado. Pedido quitado!':'Pagamento parcial registrado!')
 }
 function openFinance(existing=null){
  let x=existing||{id:id('f'),date:today(),type:'Entrada',payment:'Pix',desc:'',value:0};
@@ -523,12 +544,18 @@ function saveFinance(i){
  if(!x.desc){alert('Informe a descrição do lançamento.');return}if(!(x.value>0)){alert('Informe um valor maior que zero.');return}
  if(!db.finance.includes(x))db.finance.push(x);save();closeModal();toast('Lançamento salvo!');renderAll()
 }
-function deleteFinance(i){let x=db.finance.find(x=>x.id===i);if(!x)return;if(!confirm(`Excluir o lançamento "${x.desc}" de ${money(x.value)}?`))return;db.finance=db.finance.filter(x=>x.id!==i);save();renderAll();toast('Lançamento excluído!')}
+function deleteFinance(i){
+ let x=db.finance.find(x=>x.id===i);if(!x)return;
+ let msg=x.orderId?`Excluir este pagamento de ${money(x.value)}? O valor também será retirado do total recebido do pedido.`:`Excluir o lançamento "${x.desc}" de ${money(x.value)}?`;
+ if(!confirm(msg))return;
+ if(x.orderId){let o=db.orders.find(o=>o.id===x.orderId);if(o)o.received=Math.max(0,Number(o.received||0)-Number(x.value||0))}
+ db.finance=db.finance.filter(x=>x.id!==i);save();renderAll();toast(x.orderId?'Pagamento excluído e pedido atualizado!':'Lançamento excluído!')
+}
 
 function renderReports(){
  let m=document.getElementById('reportMonth').value||currentMonth(),os=monthOrders(m);
  let rev=os.reduce((a,o)=>a+Number(o.total||0),0),rec=os.reduce((a,o)=>a+Number(o.received||0),0),cost=os.reduce((a,o)=>a+Number(o.cost||0),0);
- let fm=db.finance.filter(x=>(x.date||'').slice(0,7)===m), manualIn=fm.filter(x=>x.type==='Entrada').reduce((a,x)=>a+Number(x.value||0),0), expenses=fm.filter(x=>x.type==='Saída').reduce((a,x)=>a+Number(x.value||0),0);
+ let fm=db.finance.filter(x=>(x.date||'').slice(0,7)===m), manualIn=fm.filter(x=>x.type==='Entrada'&&!x.orderId).reduce((a,x)=>a+Number(x.value||0),0), expenses=fm.filter(x=>x.type==='Saída').reduce((a,x)=>a+Number(x.value||0),0);
  let cashIn=rec+manualIn, cashResult=cashIn-expenses-cost;
  document.getElementById('reportCards').innerHTML=[
   ['Faturamento',money(rev)],['Recebido',money(cashIn)],['A receber',money(os.reduce((a,o)=>a+orderBalance(o),0))],
