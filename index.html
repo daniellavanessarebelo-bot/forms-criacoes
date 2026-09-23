@@ -131,6 +131,40 @@ table{font-size:12px}th,td{padding:11px 8px}
 .forms-footer b{color:#10264b}
 @media(max-width:1200px){.dashboard-status{grid-template-columns:repeat(2,1fr)}.cards{grid-template-columns:repeat(2,1fr)!important}.grid2{grid-template-columns:1fr}}
 
+
+/* Ajustes responsivos para celular */
+@media(max-width:700px){
+ body{overflow-x:hidden}
+ .app{display:block;min-height:100vh}
+ .sidebar{position:static!important;width:100%!important;height:auto!important;padding:10px 12px 12px!important;border-right:0;border-bottom:1px solid #f1e9e6}
+ .brand-full{padding:0!important}
+ .brand-logo{width:118px!important;height:118px!important;margin:0 auto 4px!important;display:block}
+ .nav{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:6px!important}
+ .nav button{height:42px!important;margin:0!important;padding:8px 10px!important;font-size:12px!important;justify-content:flex-start}
+ .sidebar>div:last-child{position:static!important;display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px}
+ .sidebar>div:last-child .btn,.sidebar>div:last-child label{margin:0!important;padding:9px 6px!important;font-size:11px!important}
+ .sidebar>div:last-child button:last-child{grid-column:1/-1}
+ .content{margin-left:0!important;width:100%!important;padding:16px 12px 28px!important;overflow:hidden}
+ .top{display:flex!important;gap:10px!important;align-items:flex-start!important;margin-bottom:14px!important}
+ .top>div{min-width:0;flex:1}
+ .top h1{font-size:24px!important;line-height:1.08!important;overflow-wrap:anywhere}
+ .top .subtitle{font-size:13px!important}
+ .top>.btn{flex:0 0 auto;max-width:128px;padding:10px 11px!important;font-size:12px!important}
+ .dashboard-status,.cards{grid-template-columns:1fr 1fr!important;gap:8px!important}
+ .status-card,.card{min-width:0;padding:12px!important}
+ .grid2,.grid3{grid-template-columns:1fr!important}
+ .panel{padding:12px!important;max-width:100%;overflow:hidden}
+ .table-wrap,#ordersTable,#quotesTable,#customersTable,#productsTable,#financeTable,#reportOrders{overflow-x:auto!important;-webkit-overflow-scrolling:touch}
+ table{min-width:760px}
+ .toolbar{display:grid!important;grid-template-columns:1fr!important}
+ .toolbar input,.toolbar select{min-width:0!important;width:100%!important}
+ .modal{padding:12px!important}
+ .modal-box{width:100%!important;max-width:100%!important;padding:16px!important}
+ .form-grid,.form-grid.three{grid-template-columns:1fr!important}
+ #q_items>div{grid-template-columns:1fr 90px!important;align-items:end!important}
+ #q_items>div .field:first-child{grid-column:1/-1}
+ .forms-footer{gap:8px;flex-wrap:wrap}
+}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
