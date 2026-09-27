@@ -192,6 +192,7 @@ table{font-size:12px}th,td{padding:11px 8px}
     <button data-page="orcamentos">▧ &nbsp; Orçamentos</button>
     <button data-page="clientes">♙ &nbsp; Clientes</button>
     <button data-page="produtos">◇ &nbsp; Produtos</button>
+    <button data-page="custos">▦ &nbsp; Custos</button>
     <button data-page="financeiro">R$ &nbsp; Financeiro</button>
     <button data-page="relatorios">▥ &nbsp; Relatórios</button>
   </nav>
@@ -233,6 +234,22 @@ table{font-size:12px}th,td{padding:11px 8px}
   <div class="panel"><div id="productsTable"></div></div>
 </section>
 
+<section id="custos" class="page" style="display:none">
+<div class="top"><div><h1>Calculadora de custos</h1><div class="subtitle">Calcule o custo dos seus produtos.</div></div></div>
+<div class="panel">
+<div class="form-grid">
+<div class="field"><label>Produto</label><input id="costName" placeholder="Ex.: Sacola personalizada"></div>
+<div class="field"><label>Quantidade produzida</label><input id="costQty" type="number" value="1" min="1" oninput="calcCosts()"></div>
+<div class="field"><label>Mão de obra do lote (R$)</label><input id="costLabor" type="number" value="0" min="0" step=".01" oninput="calcCosts()"></div>
+<div class="field"><label>Outros custos (R$)</label><input id="costOther" type="number" value="0" min="0" step=".01" oninput="calcCosts()"></div>
+<div class="field"><label>Desperdício (%)</label><input id="costWaste" type="number" value="0" min="0" step=".1" oninput="calcCosts()"></div>
+<div class="field"><label>Margem desejada (%)</label><input id="costMargin" type="number" value="50" min="0" step=".1" oninput="calcCosts()"></div>
+</div></div>
+<div class="panel" style="margin-top:14px"><div class="panel-head"><h2>Materiais e insumos</h2><button class="btn btn-light" onclick="addCostRow()">+ Adicionar insumo</button></div>
+<div class="table-wrap"><table><thead><tr><th>Insumo</th><th>Valor da compra</th><th>Qtd. comprada</th><th>Qtd. usada</th><th>Custo usado</th><th></th></tr></thead><tbody id="costRows"></tbody></table></div></div>
+<div class="cards" id="costResult" style="margin-top:14px"></div>
+</section>
+
 <section id="financeiro" class="page" style="display:none">
   <div class="top"><div><h1>Financeiro</h1><div class="subtitle">Entradas, despesas, contas a receber e resultado mensal.</div></div><button class="btn btn-primary" onclick="openFinance()">+ Lançamento</button></div>
   <div class="toolbar" style="margin-bottom:12px"><input id="financeMonth" type="month" onchange="renderFinance()"><select id="financeType" onchange="renderFinance()"><option value="">Todos os lançamentos</option><option>Entrada</option><option>Saída</option></select></div>
@@ -247,7 +264,7 @@ table{font-size:12px}th,td{padding:11px 8px}
   <div class="grid3" id="reportCards"></div>
   <div class="panel"><div class="panel-head"><h2>Pedidos do período</h2></div><div id="reportOrders"></div></div>
 </section>
-<div class="forms-footer"><span><b>Forms Criações Personalizadas</b></span><span>v1.1 ♥</span></div>
+<div class="forms-footer"><span><b>Forms Criações Personalizadas</b></span><span>v1.2 ♥</span></div>
 </main>
 </div>
 
