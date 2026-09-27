@@ -189,6 +189,7 @@ table{font-size:12px}th,td{padding:11px 8px}
     <button data-page="orcamentos">▧ &nbsp; Orçamentos</button>
     <button data-page="clientes">♙ &nbsp; Clientes</button>
     <button data-page="produtos">◇ &nbsp; Produtos</button>
+    <button data-page="custos">🧮 &nbsp; Calculadora de custos</button>
     <button data-page="financeiro">R$ &nbsp; Financeiro</button>
     <button data-page="relatorios">▥ &nbsp; Relatórios</button>
   </nav>
@@ -230,6 +231,29 @@ table{font-size:12px}th,td{padding:11px 8px}
   <div class="panel"><div id="productsTable"></div></div>
 </section>
 
+<section id="custos" class="page" style="display:none">
+  <div class="top"><div><h1>Calculadora de custos</h1><div class="subtitle">Calcule o custo real dos seus personalizados e forme o preço de venda.</div></div><button class="btn btn-primary" onclick="newCostCalc()">+ Novo cálculo</button></div>
+  <div class="panel">
+    <div class="form-grid">
+      <div class="field"><label>Produto</label><input id="costProduct" placeholder="Ex.: Sacola personalizada"></div>
+      <div class="field"><label>Quantidade produzida</label><input id="costQty" type="number" min="1" step="1" value="1" oninput="renderCostCalc()"></div>
+      <div class="field"><label>Perdas/desperdício (%)</label><input id="costWaste" type="number" min="0" step=".1" value="0" oninput="renderCostCalc()"></div>
+      <div class="field"><label>Mão de obra do lote (R$)</label><input id="costLabor" type="number" min="0" step=".01" value="0" oninput="renderCostCalc()"></div>
+      <div class="field"><label>Outros custos do lote (R$)</label><input id="costOther" type="number" min="0" step=".01" value="0" oninput="renderCostCalc()"></div>
+      <div class="field"><label>Margem desejada (%)</label><input id="costMargin" type="number" min="0" step=".1" value="50" oninput="renderCostCalc()"></div>
+    </div>
+  </div>
+  <div class="panel" style="margin-top:14px">
+    <div class="panel-head"><h2>Materiais e insumos</h2><button class="btn btn-light" onclick="addCostItem()">+ Adicionar insumo</button></div>
+    <div id="costItems"></div>
+  </div>
+  <div class="cards" id="costSummary" style="margin-top:14px"></div>
+  <div class="panel" style="margin-top:14px">
+    <div class="actions"><button class="btn btn-light" onclick="newCostCalc()">Limpar</button><button class="btn btn-primary" onclick="saveCostCalc()">Salvar cálculo</button></div>
+  </div>
+  <div class="panel" style="margin-top:14px"><div class="panel-head"><h2>Cálculos salvos</h2></div><div id="savedCosts"></div></div>
+</section>
+
 <section id="financeiro" class="page" style="display:none">
   <div class="top"><div><h1>Financeiro</h1><div class="subtitle">Entradas, despesas, contas a receber e resultado mensal.</div></div><button class="btn btn-primary" onclick="openFinance()">+ Lançamento</button></div>
   <div class="toolbar" style="margin-bottom:12px"><input id="financeMonth" type="month" onchange="renderFinance()"><select id="financeType" onchange="renderFinance()"><option value="">Todos os lançamentos</option><option>Entrada</option><option>Saída</option></select></div>
@@ -258,13 +282,14 @@ const SUPABASE_PUBLISHABLE_KEY='sb_publishable_u4-d9gYhMgX5HOpkzuZsPA_xqOYgO4S';
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
 let currentUser=null;
 const KEY='forms_criacoes_gestao_v1';
-let db=JSON.parse(localStorage.getItem(KEY)||'null')||{orders:[],quotes:[],customers:[],products:[],finance:[]};
+let db=JSON.parse(localStorage.getItem(KEY)||'null')||{orders:[],quotes:[],customers:[],products:[],finance:[],costCalculations:[]};
+if(!Array.isArray(db.costCalculations))db.costCalculations=[];
 let syncTimer=null;
 function save(){
  localStorage.setItem(KEY,JSON.stringify(db));
  if(currentUser){clearTimeout(syncTimer);syncTimer=setTimeout(syncCloud,600)}
 }
-function hasLocalData(){return ['orders','quotes','customers','products','finance'].some(k=>Array.isArray(db[k])&&db[k].length)}
+function hasLocalData(){return ['orders','quotes','customers','products','finance','costCalculations'].some(k=>Array.isArray(db[k])&&db[k].length)}
 async function syncCloud(){
  if(!currentUser)return;
  const {error}=await sb.from('forms_dados').upsert({user_id:currentUser.id,dados:db,atualizado_em:new Date().toISOString()},{onConflict:'user_id'});
@@ -274,7 +299,7 @@ async function loadCloud(){
  const {data,error}=await sb.from('forms_dados').select('dados,atualizado_em').eq('user_id',currentUser.id).maybeSingle();
  if(error){console.error(error);toast('Não foi possível acessar a nuvem. Seus dados locais foram preservados.');return}
  if(data&&data.dados){
-  db=data.dados;localStorage.setItem(KEY,JSON.stringify(db));renderAll();toast('Dados sincronizados!');
+  db=data.dados;if(!Array.isArray(db.costCalculations))db.costCalculations=[];localStorage.setItem(KEY,JSON.stringify(db));renderAll();toast('Dados sincronizados!');
  }else if(hasLocalData()){
   const ok=confirm('Encontramos dados salvos neste dispositivo e ainda não há dados na nuvem. Deseja enviar estes dados para a nuvem agora?');
   if(ok){await syncCloud();toast('Dados enviados para a nuvem!')}
@@ -400,6 +425,50 @@ function openProduct(p=null){p=p||{id:id('p')};document.getElementById('modalTit
 function saveProduct(i){let p=db.products.find(x=>x.id===i)||{id:i};Object.assign(p,{name:v('p_name'),unit:v('p_unit'),price:+v('p_price'),cost:+v('p_cost'),time:v('p_time')});if(!db.products.includes(p))db.products.push(p);save();closeModal();toast('Produto salvo!');renderAll()}
 function deleteProduct(i){let p=db.products.find(x=>x.id===i);if(!p)return;if(!confirm(`Excluir o produto "${p.name}"? Pedidos e orçamentos já emitidos serão mantidos.`))return;db.products=db.products.filter(x=>x.id!==i);save();renderAll();toast('Produto excluído!')}
 
+let costDraftItems=[];
+const defaultCostItems=['Papel','Alça','Laminação','Cola/adesivo','Impressão/tinta','Insumos para botton','Embalagem','Acabamento'];
+function costNum(id){return Number(document.getElementById(id)?.value||0)}
+function newCostCalc(){
+ document.getElementById('costProduct').value='';document.getElementById('costQty').value=1;document.getElementById('costWaste').value=0;document.getElementById('costLabor').value=0;document.getElementById('costOther').value=0;document.getElementById('costMargin').value=50;
+ document.getElementById('costProduct').dataset.editId='';
+ costDraftItems=defaultCostItems.map(name=>({name,purchaseValue:0,purchaseQty:1,usedQty:0}));
+ renderCostCalc()
+}
+function addCostItem(item={name:'Outro insumo',purchaseValue:0,purchaseQty:1,usedQty:0}){costDraftItems.push({...item});renderCostCalc()}
+function removeCostItem(i){costDraftItems.splice(i,1);renderCostCalc()}
+function updateCostItem(i,f,val){costDraftItems[i][f]=f==='name'?val:Number(val||0);renderCostSummary()}
+function itemCost(x){return Number(x.purchaseQty||0)>0?(Number(x.purchaseValue||0)/Number(x.purchaseQty||1))*Number(x.usedQty||0):0}
+function renderCostItems(){
+ let el=document.getElementById('costItems');if(!el)return;
+ el.innerHTML=costDraftItems.length?`<div class="table-wrap"><table><thead><tr><th>Material/insumo</th><th>Valor da compra (R$)</th><th>Qtd. comprada</th><th>Qtd. usada no lote</th><th>Custo utilizado</th><th></th></tr></thead><tbody>${costDraftItems.map((x,i)=>`<tr><td><input value="${String(x.name||'').replace(/"/g,'&quot;')}" oninput="updateCostItem(${i},'name',this.value)"></td><td><input type="number" min="0" step=".01" value="${x.purchaseValue||0}" oninput="updateCostItem(${i},'purchaseValue',this.value)"></td><td><input type="number" min=".0001" step=".01" value="${x.purchaseQty||1}" oninput="updateCostItem(${i},'purchaseQty',this.value)"></td><td><input type="number" min="0" step=".01" value="${x.usedQty||0}" oninput="updateCostItem(${i},'usedQty',this.value)"></td><td><b>${money(itemCost(x))}</b></td><td><button class="btn btn-light" onclick="removeCostItem(${i})">×</button></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">Adicione os materiais utilizados.</div>'
+}
+function costTotals(){
+ let materials=costDraftItems.reduce((a,x)=>a+itemCost(x),0),waste=costNum('costWaste'),labor=costNum('costLabor'),other=costNum('costOther'),qty=Math.max(1,costNum('costQty')),margin=costNum('costMargin');
+ let materialWithWaste=materials*(1+waste/100),total=materialWithWaste+labor+other,unit=total/qty,suggested=unit*(1+margin/100);
+ return {materials,materialWithWaste,total,unit,suggested,qty,margin}
+}
+function renderCostSummary(){
+ let el=document.getElementById('costSummary');if(!el)return;let t=costTotals();
+ el.innerHTML=[['Materiais',money(t.materials)],['Custo total do lote',money(t.total)],['Custo por unidade',money(t.unit)],['Preço sugerido/un.',money(t.suggested)]].map(x=>`<div class="card"><div class="label">${x[0]}</div><div class="value">${x[1]}</div></div>`).join('')
+}
+function renderCostCalc(){renderCostItems();renderCostSummary();renderSavedCosts()}
+function saveCostCalc(){
+ let product=document.getElementById('costProduct').value.trim();if(!product){alert('Informe o nome do produto.');return}
+ let editId=document.getElementById('costProduct').dataset.editId||'',t=costTotals(),obj=db.costCalculations.find(x=>x.id===editId)||{id:id('cc')};
+ Object.assign(obj,{product,qty:t.qty,waste:costNum('costWaste'),labor:costNum('costLabor'),other:costNum('costOther'),margin:t.margin,items:costDraftItems.map(x=>({...x})),total:t.total,unitCost:t.unit,suggestedPrice:t.suggested,updatedAt:new Date().toISOString()});
+ if(!db.costCalculations.includes(obj))db.costCalculations.push(obj);
+ let p=db.products.find(x=>x.name.trim().toLowerCase()===product.toLowerCase());if(p)p.cost=t.unit;
+ save();renderAll();toast(p?'Cálculo salvo e custo do produto atualizado!':'Cálculo de custo salvo!')
+}
+function editCostCalc(i){
+ let x=db.costCalculations.find(x=>x.id===i);if(!x)return;go('custos');
+ document.getElementById('costProduct').value=x.product;document.getElementById('costProduct').dataset.editId=x.id;document.getElementById('costQty').value=x.qty||1;document.getElementById('costWaste').value=x.waste||0;document.getElementById('costLabor').value=x.labor||0;document.getElementById('costOther').value=x.other||0;document.getElementById('costMargin').value=x.margin??50;costDraftItems=(x.items||[]).map(y=>({...y}));renderCostCalc()
+}
+function deleteCostCalc(i){let x=db.costCalculations.find(x=>x.id===i);if(!x)return;if(!confirm(`Excluir o cálculo de custo de "${x.product}"?`))return;db.costCalculations=db.costCalculations.filter(x=>x.id!==i);save();renderAll();toast('Cálculo excluído!')}
+function renderSavedCosts(){
+ let el=document.getElementById('savedCosts');if(!el)return,arr=[...(db.costCalculations||[])].sort((a,b)=>(b.updatedAt||'').localeCompare(a.updatedAt||''));
+ el.innerHTML=arr.length?`<table><thead><tr><th>Produto</th><th>Qtd. lote</th><th>Custo do lote</th><th>Custo unitário</th><th>Preço sugerido</th><th>Ações</th></tr></thead><tbody>${arr.map(x=>`<tr><td><b>${x.product}</b></td><td>${x.qty}</td><td>${money(x.total)}</td><td>${money(x.unitCost)}</td><td>${money(x.suggestedPrice)}</td><td><div style="display:flex;gap:6px"><button class="btn btn-light" onclick="editCostCalc('${x.id}')">Editar</button><button class="btn btn-light" onclick="deleteCostCalc('${x.id}')">Excluir</button></div></td></tr>`).join('')}</tbody></table>`:'<div class="empty">Nenhum cálculo de custo salvo.</div>'
+}
 function quoteItems(q){
  if(Array.isArray(q.items)&&q.items.length)return q.items;
  return q.product?[{product:q.product,qty:Number(q.qty||1),unit:Number(q.unit||0)}]:[];
@@ -578,8 +647,8 @@ function renderReports(){
 
 function exportData(){let blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='backup-forms-criacoes.json';a.click();toast('Backup exportado!')}
 function importData(e){let file=e.target.files[0];if(!file)return;let r=new FileReader();r.onload=()=>{try{let x=JSON.parse(r.result);if(x.orders&&x.customers){db=x;save();renderAll();toast('Backup restaurado!')}}catch(err){alert('Arquivo de backup inválido.')}};r.readAsText(file)}
-function renderAll(){renderDashboard();renderOrders();renderQuotes();renderCustomers();renderProducts();renderFinance();renderReports()}
-document.getElementById('reportMonth').value=currentMonth();document.getElementById('financeMonth').value=currentMonth();renderAll();initAuth();
+function renderAll(){renderDashboard();renderOrders();renderQuotes();renderCustomers();renderProducts();renderCostCalc();renderFinance();renderReports()}
+document.getElementById('reportMonth').value=currentMonth();document.getElementById('financeMonth').value=currentMonth();costDraftItems=defaultCostItems.map(name=>({name,purchaseValue:0,purchaseQty:1,usedQty:0}));renderAll();initAuth();
 </script>
 </body>
 </html>
