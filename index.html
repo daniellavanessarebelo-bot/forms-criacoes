@@ -598,9 +598,21 @@ function renderReports(){
  document.getElementById('reportOrders').innerHTML=os.length?`<table><thead><tr><th>Nº</th><th>Cliente</th><th>Status</th><th>Total</th><th>Recebido</th><th>Custo</th><th>Margem estimada</th></tr></thead><tbody>${os.map(o=>`<tr><td>${o.number}</td><td>${o.customer}</td><td>${statusHTML(computedStatus(o))}</td><td>${money(o.total)}</td><td>${money(o.received)}</td><td>${money(o.cost)}</td><td>${money(Number(o.total||0)-Number(o.cost||0))}</td></tr>`).join('')}</tbody></table>`:'<div class="empty">Não há pedidos no período.</div>'
 }
 
+let costRowsData=[];
+const costDefaults=['Papel','Alça','Laminação','Cola/adesivo','Impressão/tinta','Insumos para botton','Embalagem','Acabamento'];
+function costVal(id){return Number(document.getElementById(id)?.value||0)}
+function costUsed(x){return Number(x.buyQty)>0?(Number(x.buy)/Number(x.buyQty))*Number(x.used):0}
+function initCosts(){if(!costRowsData.length)costRowsData=costDefaults.map(n=>({name:n,buy:0,buyQty:1,used:0}));renderCostRows();calcCosts()}
+function addCostRow(){costRowsData.push({name:'Outro insumo',buy:0,buyQty:1,used:0});renderCostRows();calcCosts()}
+function removeCostRow(i){costRowsData.splice(i,1);renderCostRows();calcCosts()}
+function changeCost(i,k,v){if(!costRowsData[i])return;costRowsData[i][k]=k==='name'?v:Number(v||0);calcCosts()}
+function renderCostRows(){let e=document.getElementById('costRows');if(!e)return;e.innerHTML=costRowsData.map((x,i)=>'<tr><td><input value="'+String(x.name).replace(/"/g,'&quot;')+'" oninput="changeCost('+i+',\'name\',this.value)"></td><td><input type="number" min="0" step=".01" value="'+x.buy+'" oninput="changeCost('+i+',\'buy\',this.value)"></td><td><input type="number" min=".01" step=".01" value="'+x.buyQty+'" oninput="changeCost('+i+',\'buyQty\',this.value)"></td><td><input type="number" min="0" step=".01" value="'+x.used+'" oninput="changeCost('+i+',\'used\',this.value)"></td><td><b>'+money(costUsed(x))+'</b></td><td><button class="btn btn-light" onclick="removeCostRow('+i+')">×</button></td></tr>').join('')}
+function calcCosts(){let e=document.getElementById('costResult');if(!e)return;let materials=costRowsData.reduce((a,x)=>a+costUsed(x),0),qty=Math.max(1,costVal('costQty')),waste=costVal('costWaste'),total=materials*(1+waste/100)+costVal('costLabor')+costVal('costOther'),unit=total/qty,suggested=unit*(1+costVal('costMargin')/100);e.innerHTML=[['Materiais',materials],['Custo total do lote',total],['Custo por unidade',unit],['Preço sugerido/un.',suggested]].map(x=>'<div class="card"><div class="label">'+x[0]+'</div><div class="value">'+money(x[1])+'</div></div>').join('');renderCostRowsValues()}
+function renderCostRowsValues(){let rows=document.querySelectorAll('#costRows tr');rows.forEach((r,i)=>{let b=r.querySelector('td:nth-child(5) b');if(b&&costRowsData[i])b.textContent=money(costUsed(costRowsData[i]))})}
+
 function exportData(){let blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='backup-forms-criacoes.json';a.click();toast('Backup exportado!')}
 function importData(e){let file=e.target.files[0];if(!file)return;let r=new FileReader();r.onload=()=>{try{let x=JSON.parse(r.result);if(x.orders&&x.customers){db=x;save();renderAll();toast('Backup restaurado!')}}catch(err){alert('Arquivo de backup inválido.')}};r.readAsText(file)}
-function renderAll(){renderDashboard();renderOrders();renderQuotes();renderCustomers();renderProducts();renderFinance();renderReports()}
+function renderAll(){renderDashboard();renderOrders();renderQuotes();renderCustomers();renderProducts();renderFinance();renderReports();initCosts()}
 document.getElementById('reportMonth').value=currentMonth();document.getElementById('financeMonth').value=currentMonth();renderAll();initAuth();
 </script>
 </body>
