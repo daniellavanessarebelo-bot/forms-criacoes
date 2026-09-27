@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Forms Criações Personalizados — Gestão</title>
@@ -244,7 +247,7 @@ table{font-size:12px}th,td{padding:11px 8px}
   <div class="grid3" id="reportCards"></div>
   <div class="panel"><div class="panel-head"><h2>Pedidos do período</h2></div><div id="reportOrders"></div></div>
 </section>
-<div class="forms-footer"><span><b>Forms Criações Personalizadas</b></span><span>v1.0 ♥</span></div>
+<div class="forms-footer"><span><b>Forms Criações Personalizadas</b></span><span>v1.1 ♥</span></div>
 </main>
 </div>
 
@@ -258,7 +261,9 @@ const SUPABASE_PUBLISHABLE_KEY='sb_publishable_u4-d9gYhMgX5HOpkzuZsPA_xqOYgO4S';
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
 let currentUser=null;
 const KEY='forms_criacoes_gestao_v1';
-let db=JSON.parse(localStorage.getItem(KEY)||'null')||{orders:[],quotes:[],customers:[],products:[],finance:[]};
+let db=JSON.parse(localStorage.getItem(KEY)||'null')||{};
+function normalizeDb(x){x=x&&typeof x==='object'?x:{};['orders','quotes','customers','products','finance'].forEach(k=>{if(!Array.isArray(x[k]))x[k]=[]});return x}
+db=normalizeDb(db);
 let syncTimer=null;
 function save(){
  localStorage.setItem(KEY,JSON.stringify(db));
@@ -274,7 +279,7 @@ async function loadCloud(){
  const {data,error}=await sb.from('forms_dados').select('dados,atualizado_em').eq('user_id',currentUser.id).maybeSingle();
  if(error){console.error(error);toast('Não foi possível acessar a nuvem. Seus dados locais foram preservados.');return}
  if(data&&data.dados){
-  db=data.dados;localStorage.setItem(KEY,JSON.stringify(db));renderAll();toast('Dados sincronizados!');
+  db=normalizeDb(data.dados);localStorage.setItem(KEY,JSON.stringify(db));renderAll();toast('Dados sincronizados!');
  }else if(hasLocalData()){
   const ok=confirm('Encontramos dados salvos neste dispositivo e ainda não há dados na nuvem. Deseja enviar estes dados para a nuvem agora?');
   if(ok){await syncCloud();toast('Dados enviados para a nuvem!')}
