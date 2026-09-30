@@ -237,10 +237,20 @@ table{font-size:12px}th,td{padding:11px 8px}
 <section id="custos" class="page" style="display:none">
 <div class="top"><div><h1>Custos</h1><div class="subtitle">Cadastre fichas de custo dos seus produtos ou faça uma simulação rápida.</div></div></div>
 <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
-<button id="costTabSaved" class="btn btn-primary" onclick="showCostMode('saved')">Custos cadastrados</button>
+<button id="costTabSupplies" class="btn btn-primary" onclick="showCostMode('supplies')">Insumos</button>
+<button id="costTabSaved" class="btn btn-light" onclick="showCostMode('saved')">Custos cadastrados</button>
 <button id="costTabSim" class="btn btn-light" onclick="showCostMode('sim')">Simulação avulsa</button>
 </div>
-<div id="costSavedMode">
+<div id="costSuppliesMode">
+<div class="panel"><div class="panel-head"><div><h2>Cadastro de insumos</h2><div class="subtitle">Cadastre uma vez o valor de compra e a quantidade adquirida. Depois use o insumo nos custos dos produtos.</div></div><button class="btn btn-primary" onclick="openSupply()">+ Novo insumo</button></div>
+<div class="form-grid" id="supplyForm" style="display:none;margin-bottom:16px">
+<div class="field"><label>Insumo</label><input id="supplyName" placeholder="Ex.: Papel Offset 180g"></div>
+<div class="field"><label>Valor da compra (R$)</label><input id="supplyBuy" type="number" min="0" step=".01"></div>
+<div class="field"><label>Quantidade comprada</label><input id="supplyQty" type="number" min=".01" step=".01"></div>
+<div class="field"><label>Unidade</label><input id="supplyUnit" placeholder="Ex.: folhas, metros, unidades"></div>
+<div style="display:flex;gap:8px;align-items:end"><button class="btn btn-primary" onclick="saveSupply()">Salvar insumo</button><button class="btn btn-light" onclick="closeSupply()">Cancelar</button></div>
+</div><div id="suppliesList"></div></div></div>
+<div id="costSavedMode" style="display:none">
 <div class="panel"><div class="panel-head"><h2>Produtos com custo cadastrado</h2><button class="btn btn-primary" onclick="newCostSheet()">+ Cadastrar custo</button></div><div id="costSavedList"></div></div>
 </div>
 <div id="costSimMode" style="display:none">
@@ -274,7 +284,7 @@ table{font-size:12px}th,td{padding:11px 8px}
   <div class="grid3" id="reportCards"></div>
   <div class="panel"><div class="panel-head"><h2>Pedidos do período</h2></div><div id="reportOrders"></div></div>
 </section>
-<div class="forms-footer"><span><b>Forms Criações Personalizadas</b></span><span>v1.3 ♥</span></div>
+<div class="forms-footer"><span><b>Forms Criações Personalizadas</b></span><span>v1.4 ♥</span></div>
 </main>
 </div>
 
@@ -289,7 +299,7 @@ const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
 let currentUser=null;
 const KEY='forms_criacoes_gestao_v1';
 let db=JSON.parse(localStorage.getItem(KEY)||'null')||{};
-function normalizeDb(x){x=x&&typeof x==='object'?x:{};['orders','quotes','customers','products','finance','costs'].forEach(k=>{if(!Array.isArray(x[k]))x[k]=[]});return x}
+function normalizeDb(x){x=x&&typeof x==='object'?x:{};['orders','quotes','customers','products','finance','costs','supplies'].forEach(k=>{if(!Array.isArray(x[k]))x[k]=[]});return x}
 db=normalizeDb(db);
 let syncTimer=null;
 function save(){
