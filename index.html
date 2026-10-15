@@ -343,6 +343,19 @@ async function initAuth(){
  sb.auth.onAuthStateChange((event,session)=>{if(event==='SIGNED_OUT'){currentUser=null;showLogin(true)}});
 }
 function money(v){return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}
+function parseOrderNumber(idv){
+ const raw=String(document.getElementById(idv)?.value??'').trim().replace(/[\sR$]/g,'');
+ if(!raw)return 0;
+ let normalized=raw;
+ const comma=normalized.lastIndexOf(','),dot=normalized.lastIndexOf('.');
+ if(comma>=0&&dot>=0){
+  normalized=comma>dot?normalized.replace(/\./g,'').replace(',','.'):normalized.replace(/,/g,'');
+ }else if(comma>=0){normalized=normalized.replace(',','.');}
+ if(!/^-?(?:\d+(?:\.\d*)?|\.\d+)$/.test(normalized))return null;
+ const parsed=Number(normalized);
+ return Number.isFinite(parsed)?parsed:null;
+}
+function cents(value){return Math.round((value+Number.EPSILON)*100)/100}
 function dateBR(s){if(!s)return '-';let d=new Date(s+'T12:00:00');return d.toLocaleDateString('pt-BR')}
 function today(){return new Date().toISOString().slice(0,10)}
 function id(prefix){return prefix+Date.now().toString().slice(-7)}
@@ -408,18 +421,25 @@ function openOrder(existing=null){
  <div class="field"><label>Cliente</label><input id="f_customer" list="customerList" value="${o.customer||''}" placeholder="Nome do cliente"><datalist id="customerList">${db.customers.map(c=>`<option value="${c.name}">`).join('')}</datalist></div>
  <div class="field"><label>WhatsApp</label><input id="f_phone" value="${o.phone||''}"></div>
  <div class="field"><label>Produto/serviço</label><input id="f_product" list="productList" value="${o.product||''}"><datalist id="productList">${db.products.map(p=>`<option value="${p.name}">`).join('')}</datalist></div>
- <div class="field"><label>Quantidade</label><input id="f_qty" type="number" min="0" value="${o.qty||1}"></div>
+ <div class="field"><label>Quantidade</label><input id="f_qty" type="text" inputmode="decimal" autocomplete="off" value="${o.qty??1}"></div>
  <div class="field"><label>Prazo de entrega</label><input id="f_due" type="date" value="${o.due||''}"></div>
  <div class="field"><label>Status</label><select id="f_status">${['Em andamento','Atrasado','No prazo','Concluído'].map(s=>`<option ${o.status===s?'selected':''}>${s}</option>`).join('')}</select></div>
- <div class="field"><label>Valor total (R$)</label><input id="f_total" type="number" step="0.01" value="${o.total||0}"></div>
- <div class="field"><label>Valor recebido (R$)</label><input id="f_received" type="number" step="0.01" value="${o.received||0}"></div>
- <div class="field"><label>Custo (R$)</label><input id="f_cost" type="number" step="0.01" value="${o.cost||0}"></div>
+ <div class="field"><label>Valor total (R$)</label><input id="f_total" type="text" inputmode="decimal" autocomplete="off" value="${o.total??0}"></div>
+ <div class="field"><label>Valor recebido (R$)</label><input id="f_received" type="text" inputmode="decimal" autocomplete="off" value="${o.received??0}"></div>
+ <div class="field"><label>Custo (R$)</label><input id="f_cost" type="text" inputmode="decimal" autocomplete="off" value="${o.cost??0}"></div>
  <div class="field"><label>Forma de pagamento</label><select id="f_payment"><option>Pix</option><option>Dinheiro</option><option>Cartão</option><option>Transferência</option><option>Outro</option></select></div>
  <div class="field full"><label>Observações</label><textarea id="f_notes">${o.notes||''}</textarea></div>
  </div><div class="actions"><button class="btn btn-light" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveOrder('${o.id}')">Salvar pedido</button></div>`;
  document.getElementById('f_payment').value=o.payment||'Pix'; document.getElementById('modal').classList.add('open');
 }
-function saveOrder(i){let o=db.orders.find(x=>x.id===i)||{id:i};Object.assign(o,{number:v('f_number'),date:v('f_date'),customer:v('f_customer'),phone:v('f_phone'),product:v('f_product'),qty:+v('f_qty'),due:v('f_due'),status:v('f_status'),total:+v('f_total'),received:+v('f_received'),cost:+v('f_cost'),payment:v('f_payment'),notes:v('f_notes')});if(!db.orders.includes(o))db.orders.push(o);save();closeModal();toast('Pedido salvo!');renderAll()}
+function saveOrder(i){
+ const qty=parseOrderNumber('f_qty'),total=parseOrderNumber('f_total'),received=parseOrderNumber('f_received'),cost=parseOrderNumber('f_cost');
+ if([qty,total,received,cost].some(x=>x===null)){alert('Confira os números informados. Use vírgula ou ponto nos decimais.');return}
+ if([qty,total,received,cost].some(x=>x<0)){alert('Quantidade e valores não podem ser negativos.');return}
+ const o=db.orders.find(x=>x.id===i)||{id:i};
+ Object.assign(o,{number:v('f_number'),date:v('f_date'),customer:v('f_customer'),phone:v('f_phone'),product:v('f_product'),qty,total:cents(total),received:cents(received),due:v('f_due'),status:v('f_status'),cost:cents(cost),payment:v('f_payment'),notes:v('f_notes')});
+ if(!db.orders.includes(o))db.orders.push(o);save();closeModal();toast('Pedido salvo!');renderAll()
+}
 function editOrder(i){openOrder(db.orders.find(o=>o.id===i))}
 function deleteOrder(i){let o=db.orders.find(x=>x.id===i);if(!o)return;if(!confirm(`Excluir o pedido ${o.number}? Esta ação não pode ser desfeita.`))return;db.orders=db.orders.filter(x=>x.id!==i);save();renderAll();toast('Pedido excluído!')}
 function v(id){return document.getElementById(id).value}
@@ -653,3 +673,4 @@ document.getElementById('reportMonth').value=currentMonth();document.getElementB
 </script>
 </body>
 </html>
+
